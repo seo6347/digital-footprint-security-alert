@@ -28,6 +28,8 @@ v0.1부터는 실제 협업 개발 단계에 진입하므로, 모든 팀원은 �
 
 단, Module 외부와 데이터를 주고받는 Public Interface와 Schema는 본 문서를 따라야 한다.
 
+본 문서는 v0.1 개발의 단일 Source of Truth이다. 업데이트되지 않은 README는 v0.1 Contract 판단 근거로 사용하지 않는다. 아래에 반영된 v0.1 팀 확정 결정은 기존의 상충하는 설명과 예시보다 우선한다. 미결 사항은 임의로 구현하지 않고 `[DECISION REQUIRED]`로 확인한다.
+
 ---
 
 # **2\. v0.1 프로젝트 범위**
@@ -197,6 +199,73 @@ v0.1의 모든 Public Schema는 다음 값을 사용한다.
 
 v0.1 Contract Freeze 이후 Public Field 변경은 팀 합의 없이 수행하지 않는다.
 
+## **6.2 Common Error Schema — ErrorDetail**
+
+모든 Public Response(`SearchResponse`, `ProfilingResponse`, `RiskResponse`, `DFSAResult`)의 `errors[]`는 동일한 `ErrorDetail` 모델을 사용한다. Module별 별도 Error JSON 형식을 만들지 않는다.
+
+| Field | Type | Required | Default |
+| ----- | ----- | ----- | ----- |
+| `code` | string | true | 없음 |
+| `message` | string | true | 없음 |
+| `retryable` | boolean | true | 없음 |
+| `source_id` | string 또는 null | false | null |
+| `query_id` | string 또는 null | false | null |
+
+`source_id`, `query_id`는 생략 또는 null을 허용한다. `code`는 string이며 이 결정에서 별도 Enum을 정의하지 않는다.
+
+## **6.3 Public Contract 재사용**
+
+동일 의미의 object에 UI 전용 별도 Schema를 만들지 않는다. 가능한 경우 다음 공통 모델을 그대로 재사용한다.
+
+* `Subject`: `name`, `organization`, `email`을 가진 사용자 정보.
+* `Source`: B가 반환하는 `source_id`, `url`, `processing_status`, `identity_status` 구조. `ProfilingResponse.sources`와 `DFSAResult.sources`에서 재사용한다.
+* `Exposure`: `ProfilingResponse`, `RiskRequest`, `DFSAResult`에서 재사용한다.
+* `RiskPath`: `RiskResponse.risk_paths`와 `DFSAResult.risk_paths`에서 반드시 동일 모델을 재사용하며 필수 `evaluation`을 유지한다.
+* `ErrorDetail`: 모든 Public Response의 `errors[]` 항목.
+
+A의 검색 결과 object는 B의 처리 결과인 `Source`와 의미·field가 다르다. A의 `results` 항목 구조는 `ProfilingRequest.search_results`에서 그대로 재사용한다.
+
+## **6.4 Collection field의 required / default 정책**
+
+Public collection field인 `queries`, `results`, `sources`, `exposures`, `risk_paths`, `errors`는 모두 list 타입이며 기본값은 빈 배열 `[]`이다. Pydantic 구현에서는 `default_factory=list` 사용을 권장한다.
+
+이 field들은 모델 입력에서 생략하면 빈 배열로 기본화한다. Public Response 직렬화 결과에서는 해당 Schema에 정의된 collection field가 항상 존재해야 한다. 기본값 또는 미지정 field를 제외하는 직렬화 옵션으로 이 field들을 누락하지 않는다. 정상 0건은 field 누락 대신 명시적인 `[]`로 전달한다.
+
+| Schema | 빈 배열 기본값 및 항상 직렬화할 collection field |
+| ----- | ----- |
+| `SearchResponse` | `queries`, `results`, `errors` |
+| `ProfilingResponse` | `sources`, `exposures`, `errors` |
+| `RiskResponse` | `risk_paths`, `errors` |
+| `DFSAResult` | `sources`, `exposures`, `risk_paths`, `errors` |
+
+`ProfilingRequest.search_results` 항목의 구조는 재사용하되, `search_results` 자체는 위 빈 배열 기본값 목록에 포함되지 않으므로 required이다. `RiskRequest.exposures`와 중첩 `Exposure.sources`에도 해당 이름의 collection 기본값 정책을 적용한다. 단, §17의 Exposure Source 최소 1개 조건은 유지한다. 따라서 `Exposure.sources`를 생략하여 기본값 `[]`가 적용되더라도 유효한 Exposure가 되지는 않는다.
+
+## **6.5 Summary 및 stages**
+
+`RiskResponse.summary`와 `DFSAResult.summary`는 required이며, 빈 결과에서도 summary object가 반드시 존재해야 한다. summary 자체에 빈 object 기본값을 부여하지 않는다.
+
+* `RiskResponse.summary`: `total_exposures`, `total_paths` 모두 required.
+* `DFSAResult.summary`: `search_result_count`, `confirmed_source_count`, `total_exposures`, `total_risk_paths` 모두 required.
+
+각 field는 해당 결과의 실제 건수를 기록하며 0건이면 `0`을 명시한다.
+
+`DFSAResult.stages`는 required이며 `search`, `profiling`, `risk_analysis` 세 field도 모두 required이다. 각 값은 §24의 `StageStatus`를 사용한다.
+
+## **6.6 Optional / nullable 및 나머지 field**
+
+다음 field는 optional 또는 null 허용으로 유지한다.
+
+| Field | 정책 |
+| ----- | ----- |
+| `Exposure.relation` | optional, string 또는 null, default null |
+| `Source.identity_status` | optional, Identity Status 또는 null. §15의 검증 완료 조건 유지 |
+| `ErrorDetail.source_id` | optional, string 또는 null, default null |
+| `ErrorDetail.query_id` | optional, string 또는 null, default null |
+| 검색 결과의 `title`, `snippet` | 생략 또는 null을 허용하는 string |
+| `discovered_by[]`의 `provider_rank` | 생략 또는 null을 허용하는 integer |
+
+위 정책, §6.4의 collection 기본값, `SearchRequest.options` 및 `SearchOptions.top_k` 등 명세에서 별도로 optional로 정의한 예외를 제외한 Public Schema의 핵심 field는 required로 취급한다. `RiskPath.evaluation`과 그 다섯 하위 field도 모두 required이다.
+
 ---
 
 # **7\. ID Ownership**
@@ -235,12 +304,13 @@ failed
 
 결과 배열이 빈 배열이어도 정상 처리일 수 있다.
 
-예:
+예 (상태 및 collection 표현을 보여주는 응답 일부):
 
 ```json
 {
   "status": "success",
-  "results": []
+  "results": [],
+  "errors": []
 }
 ```
 
@@ -326,14 +396,21 @@ required: true
 format: valid email
 ```
 
+### **options**
+
+`SearchRequest.options`는 optional이다. 생략하면 `top_k = 10`을 사용한다.
+
 ### **options.top\_k**
 
 ```
 type: integer
 required: false
 default: 10
-recommended range: 1 ~ 20
+minimum: 1
+maximum: 20
 ```
+
+`SearchOptions.top_k`의 1~20 범위는 권장이 아니라 강제 validation 조건이다.
 
 ---
 
@@ -392,6 +469,23 @@ recommended range: 1 ~ 20
 }
 ```
 
+## **searched_at**
+
+`searched_at`은 timezone-aware datetime으로 validation한다. 시간대가 없는 datetime은 허용하지 않는다. 직렬화는 UTC RFC3339 형식 사용을 원칙으로 한다.
+
+예: `2026-10-30T08:00:00Z`
+
+## **QueryExecution.status**
+
+`queries[]`의 각 항목은 `QueryExecution`이며 `status`는 다음 두 값만 허용한다.
+
+```
+success
+failed
+```
+
+`partial_success`는 개별 QueryExecution에서 사용하지 않는다. `SearchResponse` 최상위 `status`는 공통 Module Status인 `success`, `partial_success`, `failed`를 사용한다.
+
 ## **relevance.status**
 
 v0.1:
@@ -407,7 +501,7 @@ A의 `candidate`는 검색 결과가 실제 사용자라고 확정한 값이 아
 
 ## **relevance.reasons**
 
-초기 v0.1 후보:
+v0.1 확정 Enum이며 다음 다섯 값만 허용한다:
 
 ```
 name_match
@@ -591,6 +685,24 @@ B Response에는 `subject`를 다시 포함하지 않는다.
 
 `subject`의 Owner는 Orchestrator이다.
 
+## **Source.identity_status**
+
+`identity_status`는 optional이며 null을 허용한다. 값이 있는 경우 `confirmed`, `uncertain`, `rejected` 중 하나만 허용한다.
+
+`fetch_failed`, `parse_failed`, `unsupported`처럼 동일인 검증을 수행하지 못한 Source는 `identity_status = null`로 표현할 수 있다.
+
+`processing_status = success`이며 동일인 검증을 완료한 경우에는 `identity_status`가 반드시 `confirmed`, `uncertain`, `rejected` 중 하나여야 한다. 검증 완료 결과를 null로 표현하지 않는다.
+
+## **Exposure.relation**
+
+```
+type: string | null
+required: false
+default: null
+```
+
+`relation`이 없는 Exposure는 해당 field의 생략 또는 null을 허용한다. 이 규칙은 `ProfilingResponse`, `RiskRequest`, `DFSAResult`에 동일하게 적용한다.
+
 ---
 
 # **16\. B processing\_status**
@@ -605,7 +717,7 @@ unsupported
 rejected
 ```
 
-필요한 Error 상태가 실제 구현 과정에서 추가될 수 있으나 Public Contract 변경 시 팀 공유가 필요하다.
+위 값의 추가·삭제는 Public Contract 변경이다. 실제 구현 과정에서 새 상태가 필요하더라도 임의로 추가하지 않고 §29의 팀 합의 및 Review 절차를 따른다.
 
 ---
 
@@ -695,15 +807,19 @@ A/B Pipeline의 성공·실패 여부는 Orchestrator가 알고 있으므로 ups
 
 | Rule | Trigger | Supporting Evidence | Category |
 | ----- | ----- | ----- | ----- |
-| R01 | Relationship | Affiliation, Contact | authority / organization impersonation |
-| R02 | Affiliation \+ Interest | Activity, Contact | academic impersonation |
-| R03 | Activity \+ Interest | Account, Contact | recruitment impersonation |
-| R04 | Temporal | Affiliation, Activity, Contact | event impersonation |
-| R05 | Account | Contact, Identity | account impersonation |
+| R01 | Relationship | Affiliation, Contact | `authority_impersonation` |
+| R02 | Affiliation \+ Interest | Activity, Contact | `academic_impersonation` |
+| R03 | Activity \+ Interest | Account, Contact | `recruitment_impersonation` |
+| R04 | Temporal | Affiliation, Activity, Contact | `event_impersonation` |
+| R05 | Account | Contact, Identity | `account_impersonation` |
 
 `Trigger`는 해당 Risk Path를 후보로 생성하기 위한 최소 정보이다.
 
 `Supporting Evidence`는 해당 Path를 더 구체적으로 설명하는 보조 정보이다.
+
+## **Risk Category**
+
+v0.1 `RiskPath.category`는 위 Rule 표의 다섯 직렬화 값만 허용한다. R01은 `authority_impersonation`을 사용한다.
 
 ---
 
@@ -744,7 +860,9 @@ Risk Analysis를 정상 수행할 수 없는 상태.
 
 # **21\. Risk Evaluation**
 
-각 Risk Path에는 다음 다섯 항목을 포함할 수 있다.
+`RiskResponse`의 모든 `RiskPath`에는 `evaluation`이 필수이다. `evaluation`의 다음 다섯 field도 모두 필수이다.
+
+`DFSAResult`에서도 동일한 `RiskPath` 모델을 재사용하므로 이 필수 조건이 동일하게 적용된다.
 
 ```
 searchability
@@ -820,6 +938,23 @@ v0.1에서는 단일 숫자 Risk Score를 Public Contract의 필수 요소로 �
 }
 ```
 
+
+`RiskResponse`는 빈 결과에서도 `summary`를 생략하지 않는다. 빈 입력에 대한 독립적인 RiskResponse 예시는 다음과 같다. Orchestrator의 정상 0건 조기 종료 시에는 C를 호출하지 않으므로 이 응답을 얻기 위해 C를 추가 호출하지 않는다.
+
+```json
+{
+  "schema_version": "v0.1",
+  "request_id": "req_empty",
+  "status": "success",
+  "risk_paths": [],
+  "summary": {
+    "total_exposures": 0,
+    "total_paths": 0
+  },
+  "errors": []
+}
+```
+
 ---
 
 # **23\. Schema 7 — Service → UI**
@@ -828,78 +963,91 @@ UI는 A/B/C의 개별 Response를 직접 소비하지 않는다.
 
 Orchestrator가 전체 데이터를 종합한 `DFSAResult`만 전달한다.
 
+`Subject`, `Source`, `Exposure`, `RiskPath`, `ErrorDetail`은 공통 모델을 재사용한다. UI 전달을 위해 `evaluation` 등을 제거한 별도 RiskPath DTO를 만들지 않는다.
+
+`stages.search`, `stages.profiling`, `stages.risk_analysis`는 각각 §24의 `StageStatus`를 사용한다. 최상위 `status`는 `success`, `partial_success`, `failed`를 사용하며 `not_started`는 최상위 값으로 사용하지 않는다.
+
 ## **DFSAResult**
 
 ```json
 {
   "schema_version": "v0.1",
   "request_id": "req_001",
-
   "status": "success",
-
   "subject": {
     "name": "홍길동",
     "organization": "OO대학교",
     "email": "gildong@univ.ac.kr"
   },
-
   "stages": {
     "search": "success",
     "profiling": "success",
     "risk_analysis": "success"
   },
-
   "sources": [
     {
       "source_id": "src_001",
       "url": "https://example.com/profile",
-
       "processing_status": "success",
       "identity_status": "confirmed"
     }
   ],
-
   "exposures": [
     {
       "exposure_id": "exp_001",
       "type": "affiliation",
       "value": "OO대학교 AI 연구실",
-
+      "relation": null,
       "sources": [
         {
           "source_id": "src_001",
           "evidence": "OO대학교 AI 연구실 소속 홍길동"
         }
       ]
+    },
+    {
+      "exposure_id": "exp_002",
+      "type": "relationship",
+      "value": "김OO 교수",
+      "relation": "advisor",
+      "sources": [
+        {
+          "source_id": "src_001",
+          "evidence": "지도교수 김OO..."
+        }
+      ]
     }
   ],
-
   "risk_paths": [
     {
       "risk_path_id": "path_001",
       "rule_id": "R01",
       "category": "authority_impersonation",
       "path_status": "supported",
-
       "exposure_ids": [
-        "exp_001"
+        "exp_001",
+        "exp_002"
       ],
-
-      "reason": "공개된 정보 조합을 통해 학술 관계 사칭 가능성이 확인되었습니다.",
-
+      "evaluation": {
+        "searchability": "YES",
+        "cross_source_linkability": "UNKNOWN",
+        "attack_utility": "YES",
+        "sensitivity": "NO",
+        "evidence_confidence": "UNKNOWN"
+      },
+      "reason": "공개된 연구실 소속과 지도교수 관계가 동일 사용자에게 연결되어 있습니다.",
       "recommendations": [
-        "연구실 관계자를 사칭한 연락은 별도 공식 채널에서 확인하세요."
+        "연구실 관계자를 사칭한 연락은 별도 공식 채널에서 확인하세요.",
+        "공개된 관계 정보와 연락처의 노출 범위를 검토하세요."
       ]
     }
   ],
-
   "summary": {
-    "search_result_count": 5,
-    "confirmed_source_count": 3,
-    "total_exposures": 6,
-    "total_risk_paths": 2
+    "search_result_count": 1,
+    "confirmed_source_count": 1,
+    "total_exposures": 2,
+    "total_risk_paths": 1
   },
-
   "errors": []
 }
 ```
@@ -907,6 +1055,49 @@ Orchestrator가 전체 데이터를 종합한 `DFSAResult`만 전달한다.
 ---
 
 # **24\. Orchestrator Pipeline 제어**
+
+정상 검색 0건으로 B/C 호출을 생략한 `DFSAResult` 예시:
+
+```json
+{
+  "schema_version": "v0.1",
+  "request_id": "req_empty",
+  "status": "success",
+  "subject": {
+    "name": "홍길동",
+    "organization": "OO대학교",
+    "email": "gildong@univ.ac.kr"
+  },
+  "stages": {
+    "search": "success",
+    "profiling": "not_started",
+    "risk_analysis": "not_started"
+  },
+  "sources": [],
+  "exposures": [],
+  "risk_paths": [],
+  "summary": {
+    "search_result_count": 0,
+    "confirmed_source_count": 0,
+    "total_exposures": 0,
+    "total_risk_paths": 0
+  },
+  "errors": []
+}
+```
+
+## **StageStatus**
+
+Orchestrator stage용 Enum은 공통 Module Status와 분리한다.
+
+```
+not_started
+success
+partial_success
+failed
+```
+
+`DFSAResult.stages`의 `search`, `profiling`, `risk_analysis`는 각각 `StageStatus`를 사용한다. 호출하지 않은 stage는 `not_started`로 기록한다. 실행한 stage에는 해당 Module Response의 상태를 기록한다.
 
 기본 흐름:
 
@@ -932,30 +1123,65 @@ C 호출하지 않음
 
 정상 검색이지만 결과가 없는 상태로 취급한다.
 
-빈 `search_results`를 기준으로 후속 Pipeline을 정상 종료할 수 있다.
+B/C 호출을 생략하고 overall status는 `success`로 종료한다. `profiling`, `risk_analysis` stage는 `not_started`로 기록한다.
 
 이는 Provider Error와 구분한다.
 
 ## **A status \= partial\_success**
 
-사용 가능한 검색 결과가 존재하면 B를 호출한다.
+사용 가능한 검색 결과가 존재하면 B를 호출한다. 이후 단계가 모두 성공해도 overall status는 `partial_success`이다. 단, B가 실패하면 아래 우선순위에 따라 `failed`이다.
 
 ## **B status \= failed**
 
 ```
 C 호출하지 않음
 전체 결과에 Profiling 실패 기록
+overall status = failed
 ```
 
 ## **B status \= success, exposures \= \[\]**
 
 정보 추출까지 정상 완료되었지만 사용 가능한 Exposure가 없는 상태이다.
 
-C에 빈 `exposures`를 전달하여 Risk Path 0건을 정상 결과로 처리할 수 있다.
+C 호출을 생략하고 `risk_analysis` stage는 `not_started`로 기록한다. A가 `success`이면 overall status는 `success`이고, A가 `partial_success`이면 overall status는 `partial_success`이다.
 
 ## **B status \= partial\_success**
 
-검증된 Exposure가 존재하면 C 호출을 계속한다.
+검증된 Exposure가 존재하면 C 호출을 계속한다. 최종 결과가 생성되어도 overall status는 `partial_success`이다.
+
+## **C status = failed**
+
+검색 및 Profiling 결과는 사용 가능하므로 해당 결과를 보존하고 overall status는 `partial_success`로 최종 결과를 생성한다.
+
+## **Overall status 집계 우선순위**
+
+Pipeline 전체 status 우선순위는 `failed > partial_success > success`이다. `not_started`는 집계 대상에서 제외한다.
+
+단, C의 `failed`는 검색 및 Profiling 결과를 사용할 수 있으므로 overall 집계 시 `partial_success`로 반영한다. `stages.risk_analysis`에는 실제 실행 결과인 `failed`를 그대로 기록한다. 즉 stage 상태의 단순 최댓값으로 overall status를 계산하지 않는다.
+
+다음 순서로 첫 번째 해당 규칙을 적용한다.
+
+1. A가 `failed`이면 overall = `failed`이고 B/C를 호출하지 않는다.
+2. B가 `failed`이면 overall = `failed`이고 C를 호출하지 않는다. 이전 A의 `partial_success`보다 B 실패가 우선한다.
+3. C가 `failed`이면 overall = `partial_success`이다.
+4. 실행한 A/B/C 중 `partial_success`가 하나라도 있으면 overall = `partial_success`이다.
+5. 그 외에는 overall = `success`이다.
+
+| Pipeline case | 생략하는 호출 | Overall status |
+| ----- | ----- | ----- |
+| A `failed` | B/C | `failed` |
+| A `success`, results 0건 | B/C | `success` |
+| A `partial_success` + usable results, 이후 모두 성공 | 없음 | `partial_success` |
+| A `partial_success` + B `success`, exposures 0건 | C | `partial_success` |
+| A `partial_success` + B `failed` | C | `failed` |
+| A `success` + B `failed` | C | `failed` |
+| A `success` + B `partial_success` + usable exposures, C 성공 | 없음 | `partial_success` |
+| A `success` + B `success`, exposures 0건 | C | `success` |
+| A/B 진행 가능, C `failed` | 없음 | `partial_success` |
+| A/B 진행 가능, C `partial_success` | 없음 | `partial_success` |
+| A/B/C 모두 `success` | 없음 | `success` |
+
+정상 0건으로 생략한 stage는 `not_started`이다. §8에 따라 `partial_success`는 사용 가능한 결과가 있는 상태이며, 사용 가능한 결과가 없는 실패를 `partial_success`로 표현하지 않는다.
 
 ---
 

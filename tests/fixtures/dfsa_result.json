@@ -1,0 +1,80 @@
+{
+  "schema_version": "v0.1",
+  "request_id": "req_001",
+  "status": "success",
+  "subject": {
+    "name": "홍길동",
+    "organization": "OO대학교",
+    "email": "gildong@univ.ac.kr"
+  },
+  "stages": {
+    "search": "success",
+    "profiling": "success",
+    "risk_analysis": "success"
+  },
+  "sources": [
+    {
+      "source_id": "src_001",
+      "url": "https://example.com/profile",
+      "processing_status": "success",
+      "identity_status": "confirmed"
+    }
+  ],
+  "exposures": [
+    {
+      "exposure_id": "exp_001",
+      "type": "affiliation",
+      "value": "OO대학교 AI 연구실",
+      "relation": null,
+      "sources": [
+        {
+          "source_id": "src_001",
+          "evidence": "OO대학교 AI 연구실 소속 홍길동"
+        }
+      ]
+    },
+    {
+      "exposure_id": "exp_002",
+      "type": "relationship",
+      "value": "김OO 교수",
+      "relation": "advisor",
+      "sources": [
+        {
+          "source_id": "src_001",
+          "evidence": "지도교수 김OO..."
+        }
+      ]
+    }
+  ],
+  "risk_paths": [
+    {
+      "risk_path_id": "path_001",
+      "rule_id": "R01",
+      "category": "authority_impersonation",
+      "path_status": "supported",
+      "exposure_ids": [
+        "exp_001",
+        "exp_002"
+      ],
+      "evaluation": {
+        "searchability": "YES",
+        "cross_source_linkability": "UNKNOWN",
+        "attack_utility": "YES",
+        "sensitivity": "NO",
+        "evidence_confidence": "UNKNOWN"
+      },
+      "reason": "공개된 연구실 소속과 지도교수 관계가 동일 사용자에게 연결되어 있습니다.",
+      "recommendations": [
+        "연구실 관계자를 사칭한 연락은 별도 공식 채널에서 확인하세요.",
+        "공개된 관계 정보와 연락처의 노출 범위를 검토하세요."
+      ]
+    }
+  ],
+  "summary": {
+    "search_result_count": 1,
+    "confirmed_source_count": 1,
+    "total_exposures": 2,
+    "total_risk_paths": 1
+  },
+  "errors": []
+}
