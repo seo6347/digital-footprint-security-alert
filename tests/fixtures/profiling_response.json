@@ -1,0 +1,40 @@
+{
+  "schema_version": "v0.1",
+  "request_id": "req_001",
+  "status": "success",
+  "sources": [
+    {
+      "source_id": "src_001",
+      "url": "https://example.com/profile",
+      "processing_status": "success",
+      "identity_status": "confirmed"
+    }
+  ],
+  "exposures": [
+    {
+      "exposure_id": "exp_001",
+      "type": "affiliation",
+      "value": "OO대학교 AI 연구실",
+      "relation": null,
+      "sources": [
+        {
+          "source_id": "src_001",
+          "evidence": "OO대학교 AI 연구실 소속 홍길동"
+        }
+      ]
+    },
+    {
+      "exposure_id": "exp_002",
+      "type": "relationship",
+      "value": "김OO 교수",
+      "relation": "advisor",
+      "sources": [
+        {
+          "source_id": "src_001",
+          "evidence": "지도교수 김OO..."
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

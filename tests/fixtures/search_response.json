@@ -1,0 +1,38 @@
+{
+  "schema_version": "v0.1",
+  "request_id": "req_001",
+  "status": "success",
+  "searched_at": "2026-10-30T07:00:00Z",
+  "queries": [
+    {
+      "query_id": "q_001",
+      "text": "\"홍길동\" \"OO대학교\"",
+      "provider": "brave",
+      "status": "success"
+    }
+  ],
+  "results": [
+    {
+      "source_id": "src_001",
+      "url": "https://example.com/profile",
+      "normalized_url": "https://example.com/profile",
+      "title": "OO대학교 연구실 구성원",
+      "snippet": "홍길동 · OO대학교 연구실 구성원",
+      "rank": 1,
+      "relevance": {
+        "status": "candidate",
+        "reasons": [
+          "name_match",
+          "organization_match"
+        ]
+      },
+      "discovered_by": [
+        {
+          "query_id": "q_001",
+          "provider_rank": 2
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
