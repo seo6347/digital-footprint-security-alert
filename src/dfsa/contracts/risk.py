@@ -26,6 +26,8 @@ class RiskEvaluation(ContractModel):
 
 
 class RiskPath(ContractModel):
+    """Schema only; Module C decides path status and generates explanations."""
+
     risk_path_id: str  # Owned by Module C.
     rule_id: Literal["R01", "R02", "R03", "R04", "R05"]
     category: RiskCategory

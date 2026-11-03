@@ -83,8 +83,6 @@ class RiskCategory(str, Enum):
 class RiskPathStatus(str, Enum):
     CANDIDATE = "candidate"
     SUPPORTED = "supported"
-    UNVERIFIED = "unverified"
-    NOT_ASSESSED = "not_assessed"
 
 
 class EvaluationValue(str, Enum):

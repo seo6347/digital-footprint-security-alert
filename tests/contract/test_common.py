@@ -54,7 +54,7 @@ def test_extra_subject_field_rejected(subject_data):
                     "interest", "account", "temporal"}),
     (RiskCategory, {"authority_impersonation", "academic_impersonation",
                     "recruitment_impersonation", "event_impersonation", "account_impersonation"}),
-    (RiskPathStatus, {"candidate", "supported", "unverified", "not_assessed"}),
+    (RiskPathStatus, {"candidate", "supported"}),
     (EvaluationValue, {"YES", "NO", "UNKNOWN", "NOT_APPLICABLE"}),
 ])
 def test_enum_values_match_frozen_contract(enum, values):
