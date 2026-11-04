@@ -139,7 +139,7 @@ C는 전달받은 Exposure에 대한 Risk Analysis에 집중한다.
 
 자주 등장하고 사전에 정의 가능한 R01~R05 등의 유형은 deterministic template으로 설명한다. LLM fallback은 가능한 한 이미 결정된 Risk Rule / Risk Path 결과를 설명하는 용도로 사용한다. 설명과 대응 방안의 생성 책임은 Module C에 있다.
 
-이는 향후 Module C 구현 방향이다. 이번 Contract PR에서는 실제 template engine, LLM client, prompt, API 연동을 구현하지 않는다.
+이는 향후 Module C 구현 방향이다. 현재 완료된 공통 Contract 및 Orchestrator Skeleton에는 실제 template engine, LLM client, prompt, API 연동이 포함되지 않는다.
 
 ---
 
@@ -1264,8 +1264,14 @@ Mock / Test:
 tests/
 ├── contract/
 ├── integration/
+├── modules/
+│   ├── search/
+│   ├── profiling/
+│   └── risk/
 └── fixtures/
 ```
+
+Module별 테스트는 `tests/modules/`에 두고, 품질 평가 작업은 `evaluation/module_a/`, `evaluation/module_b/`, `evaluation/module_c/`, `evaluation/e2e/`로 구분한다. 현재 Module 패키지와 테스트·평가 폴더만 준비하며 실제 기능, 테스트 함수, Dataset / Metric / 평가 코드는 추가하지 않는다. Evaluation 안내는 `evaluation/README.md`를 참조한다.
 
 ---
 
@@ -1371,16 +1377,16 @@ Mock Data 역시 실제 Contract Validation을 통과해야 한다.
 
 다음 날짜는 프로젝트 목표 일정이며 Public Schema의 의미나 validation 조건이 아니다.
 
-1. 이전 Contract 결정을 기준으로 한 미merge PR은 merge하지 않고 close/reject한다.
-2. 최신 결정을 반영하여 Contract 코드, 기술 명세서, fixture, 테스트를 수정한다.
-3. 수정된 새 Contract PR을 생성한다.
-4. 팀원 Review를 진행한다.
-5. Review를 통과한 새 Contract PR을 main에 merge한다.
-6. 상위 Orchestrator를 구현한다. 목표 deadline: **2026-11-04**.
-7. Orchestrator 기반이 준비된 이후 각 담당자가 Module A/B/C 병렬 개발을 시작한다.
+1. 이전 Contract 결정을 기준으로 한 미merge PR은 merge하지 않고 close했다.
+2. 최신 결정을 반영하여 Contract 코드, 기술 명세서, fixture, 테스트 수정을 완료했다.
+3. 수정된 새 Contract PR을 생성했다.
+4. 팀원 Review를 진행했다.
+5. Review를 통과한 새 Contract PR을 main에 merge했다.
+6. 상위 Orchestrator Skeleton과 Mock 기반 통합 테스트를 구현하여 main에 merge했다. 당초 목표 deadline: **2026-11-04**.
+7. 현재는 Module A/B/C 병렬 개발 및 Module별·E2E Evaluation을 위한 공통 폴더를 준비하는 단계이다.
 8. v0.1 전체 개발 목표: **2026-11-08 전후**.
 
-이번 PR은 2~3단계의 Contract 수정 및 새 PR 준비 범위이며 Orchestrator나 실제 Module 구현을 포함하지 않는다.
+Contract Freeze와 Orchestrator Skeleton은 완료되었다. 현재 구조 준비 작업은 폴더·패키지 초기화와 문서 정리에 한정하며 실제 Module 기능이나 평가 코드를 포함하지 않는다. v0.1 완료 범위에는 Module별 Evaluation 및 E2E Evaluation이 포함되며, 구체 기준은 §39의 미결 사항을 따른다.
 
 ## **Phase 1 — Contract Freeze**
 
@@ -1406,7 +1412,7 @@ contracts/result.py
 feature/contracts-v0.1
 ```
 
-이전 미merge PR은 merge 대상이 아니다. 최신 결정을 반영한 새 PR을 팀 Review한 뒤 가장 먼저 main에 Merge한다.
+최신 결정을 반영한 Contract PR의 팀 Review와 main Merge를 완료했다.
 
 ---
 
@@ -1414,15 +1420,15 @@ feature/contracts-v0.1
 
 담당: 서동균
 
-추천 Branch:
+구현 Branch (작업 종료):
 
 ```
 feature/orchestrator
 ```
 
-아직 실제 A/B/C가 완성되지 않아도 개발한다.
+현재 Orchestrator Skeleton은 main에 반영되어 있으며 실제 A/B/C 대신 연결 가능한 callable과 Mock으로 검증한다.
 
-Mock Module을 사용해 다음 흐름을 먼저 만든다.
+Mock Module로 검증한 흐름은 다음과 같다.
 
 ```
 Subject
@@ -1442,13 +1448,13 @@ DFSAResult
 run_pipeline()
 ```
 
-한 번으로 전체 데이터가 마지막 결과까지 전달되는 상태를 만든다.
+한 번으로 전체 데이터가 마지막 결과까지 전달된다. 실제 진입점은 `src/dfsa/service/orchestrator.py`의 `run_pipeline(subject: Subject) -> DFSAResult`이며, Mock 통합 검증은 `tests/integration/test_orchestrator.py`에 있다.
 
 ---
 
 ## **Phase 3 — Module별 병렬 개발**
 
-새 Contract PR Merge와 Phase 2 Orchestrator 기반 준비가 끝난 이후 세 Module은 동시에 개발한다.
+새 Contract PR Merge와 Phase 2 Orchestrator 기반 준비가 완료되어 세 Module의 병렬 개발을 시작할 수 있다. 구현 위치는 Module A `src/dfsa/modules/search/`, Module B `src/dfsa/modules/profiling/`, Module C `src/dfsa/modules/risk/`이다.
 
 ### **A**
 
@@ -1508,7 +1514,7 @@ Reason / Recommendation
 predefined template 우선 + 필요 시 Module C 내부 LLM fallback
 ```
 
-`supported` 판정의 세부 정책은 §20의 미결 사항을 확정한 뒤 반영한다. 위 흐름은 향후 Module C 개발 순서이며 이번 Contract PR에서 Rule Engine, template engine, LLM client 또는 prompt를 구현하지 않는다.
+`supported` 판정의 세부 정책은 §20의 미결 사항을 확정한 뒤 반영한다. 위 흐름은 향후 Module C 개발 순서이며 현재 공통 기반에는 Rule Engine, template engine, LLM client 또는 prompt 구현이 없다.
 
 ---
 
@@ -1564,7 +1570,7 @@ Real C
 
 # **33\. 개발 흐름**
 
-다음 흐름은 §31의 확정 순서를 따른다.
+다음 흐름은 §31의 확정 순서를 따른다. Contract PR과 Orchestrator 기반 구현까지 완료되었으며, 현재는 병렬 개발 및 Evaluation 구조를 준비한다.
 
 ```mermaid
 flowchart TD
@@ -1572,10 +1578,11 @@ flowchart TD
     B --> C[새 Contract PR 생성]
     C --> D[팀 Review]
     D --> E[Contract PR Merge]
-    E --> F[Orchestrator 기반 구현: 목표 2026-11-04]
+    E --> F[Orchestrator 기반 구현 완료: main 반영]
     F --> G[Module A / B / C 병렬 개발]
     G --> H[Mock에서 실제 Module로 단계별 Integration]
-    H --> I[v0.1 전체 개발 목표: 2026-11-08 전후]
+    H --> I[Module별 및 E2E Evaluation]
+    I --> J[v0.1 전체 개발 목표: 2026-11-08 전후]
 ```
 
 ---
@@ -1672,7 +1679,7 @@ Contract 자체를 변경하는 PR이면 영향받는 Fixture와 Test도 함께 
 * RiskResponse Contract 통과  
 * Orchestrator와 연결 가능
 
-위 Module C DoD는 향후 실제 Module 구현의 완료 조건이며 이번 Contract PR의 구현 범위를 확대하지 않는다.
+위 Module C DoD는 향후 실제 Module 구현의 완료 조건이며 현재 공통 폴더 준비 작업의 구현 범위를 확대하지 않는다.
 
 ## **Orchestrator**
 
@@ -1742,13 +1749,17 @@ A → B → C → UI
 
 전체 Pipeline이 Error 없이 실행되는지 확인한다.
 
-이번 단계에서는 정량적 Evaluation Metric을 적용하지 않는다.
+위 Mock 기반 Integration 단계에서는 정량적 Evaluation Metric을 적용하지 않는다. 이는 v0.1 완료 범위에서 Evaluation을 제외한다는 의미가 아니다.
+
+## **Milestone 4 — Module별 및 E2E Evaluation**
+
+v0.1 완료 범위에 Module별 Evaluation과 E2E Evaluation을 포함한다. 현재는 작업 폴더만 준비하며, Dataset / Metric / 절차와 정량 평가 기준은 §39에 따라 팀 회의에서 확정한다.
 
 ---
 
-# **39\. Evaluation 이후 계획**
+# **39\. Evaluation 계획 및 미결 사항**
 
-v0.1 Integration 이후 Evaluation은 두 종류로 분리한다.
+v0.1 완료 범위에 포함되는 품질 평가는 Module별 Evaluation과 E2E Evaluation으로 구분한다.
 
 ```
 Module Evaluation
@@ -1757,7 +1768,7 @@ E2E Evaluation
 
 **[DECISION REQUIRED] Module A/B/C Evaluation 및 E2E Evaluation의 Dataset / Metric / 절차와 정량 평가 기준은 추후 팀 회의에서 확정한다.**
 
-현재 어느 Module의 Evaluation 방식도 확정된 것으로 취급하지 않는다. 이번 Contract PR에서 Dataset, Metric, 평가 절차를 임의로 설계하거나 구현하지 않는다. 이는 RiskPath의 기존 `evaluation` 다섯 field와 Enum을 변경하는 결정이 아니다.
+현재 어느 Module의 Evaluation 방식도 확정된 것으로 취급하지 않는다. 현재 폴더 구조 준비 작업에서 Dataset, Metric, 평가 절차를 임의로 설계하거나 구현하지 않는다. 이는 RiskPath의 기존 `evaluation` 다섯 field와 Enum을 변경하는 결정이 아니다.
 
 ---
 
