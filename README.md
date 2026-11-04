@@ -1,147 +1,144 @@
 # DFSA — Digital Footprint Security Alert
 
-**공개된 정보들이 결합되면 어떤 사회공학적 위험을 만들 수 있을까요?**
+DFSA는 사용자의 공개된 디지털 발자국을 모으고 구조화하여, 여러 정보의 조합이 만들 수 있는 사회공학적 위험과 대응 방안을 설명하는 서비스를 개발하는 팀 프로젝트입니다. 2026학년도 2학기 오픈소스기초설계 수업에서 진행하며, v0.1은 대학교 연구실 구성원이 자신의 공개 정보를 점검하는 상황을 대상으로 합니다.
 
-DFSA는 사용자의 공개된 디지털 발자국(Digital Footprint)을 탐색·구조화하고, 정보의 조합이 스피어 피싱 등 사회공학 공격에 활용될 가능성을 분석하여 관리 우선순위와 대응 방안을 제공하는 서비스입니다.
+개발 목표는 공개 정보 검색, 동일인 검증과 근거 보존, 노출 정보 조합에 따른 위험 분석, 이해하기 쉬운 결과 제공입니다. 분석 결과는 실제 공격 성공 확률을 뜻하지 않습니다. 실제 피싱 메일 전송이나 비공개 정보 수집은 제공하지 않으며, 지속 모니터링·알림은 향후 확장 대상입니다.
 
-> **진행 중인 프로젝트**
->
-> 2026학년도 2학기 오픈소스기초설계 수업에서 진행하는 팀 프로젝트입니다. 이 README는 현재의 기획과 설계 방향을 소개하며, 아래 기능은 개발 목표를 포함합니다. 정보 분류 체계, 위험 분석 방법, 기술 구성은 조사와 구현 과정에서 변경될 수 있습니다.
+## 현재 개발 상태
 
-v0.1 개발의 단일 Source of Truth는 [팀 개발 명세서](docs/team-development-spec-v0.1.md)입니다. 최신 Contract 결정과 미결 사항, 개발 순서·일정은 해당 문서를 따릅니다. 현재는 Contract PR 단계이며 실제 Module과 Orchestrator 구현 완료를 의미하지 않습니다.
+| 영역 | 현재 상태 |
+| --- | --- |
+| 공통 Contract | Pydantic v2 모델과 validation 테스트 준비 완료 |
+| DFSA Orchestrator | 호출 흐름·결과 조합 구현 및 Mock Integration Test 완료 |
+| Module A / B / C | 구현·테스트 폴더 준비 완료, 실제 기능 구현 예정 |
+| Module별 / E2E Evaluation | 폴더와 안내 문서 준비 완료, Dataset·Metric·절차 미확정 |
+| Frontend / UI | 구현 예정 |
 
-## 프로젝트 배경
+현재는 Module 병렬 개발을 시작하기 위한 공통 기반이 준비된 상태입니다. 실제 검색 API, HTML 수집·분석, Risk Rule Engine을 연결한 완성 서비스는 아직 제공하지 않습니다.
 
-연구실 홈페이지, 논문, 학회 페이지, GitHub 등에 공개된 정보는 학술 활동과 협업에 필요합니다. 하지만 사용자가 자신과 관련된 정보를 여러 사이트에서 찾아보고, 서로 다른 정보가 결합될 때 발생할 수 있는 위험까지 파악하기는 어렵습니다.
+## Repository 구조
 
-예를 들어 연구실 소속, 지도교수와의 관계, 학교 이메일, 최근 학회 활동이 함께 알려져 있다면, 이를 이용해 사용자의 상황을 잘 아는 사람처럼 접근하는 사칭에 활용될 수 있습니다.
+```text
+DFSA/
+├── AGENTS.md
+├── README.md
+├── CONTRIBUTING.md
+├── requirements.txt
+├── pytest.ini
+├── docs/
+│   └── team-development-spec-v0.1.md
+├── src/dfsa/
+│   ├── contracts/                   # 공통 Pydantic Contract
+│   ├── service/
+│   │   └── orchestrator.py          # Pipeline 실행·결과 조합
+│   └── modules/                     # 실제 구현 예정 위치
+│       ├── search/                  # Module A
+│       ├── profiling/               # Module B
+│       └── risk/                    # Module C
+├── tests/
+│   ├── contract/
+│   ├── integration/
+│   ├── fixtures/
+│   └── modules/                     # Module별 테스트 추가 예정
+│       ├── search/
+│       ├── profiling/
+│       └── risk/
+└── evaluation/                      # 품질 평가 준비 위치
+    ├── README.md
+    ├── module_a/
+    ├── module_b/
+    ├── module_c/
+    └── e2e/
+```
 
-DFSA는 개별 정보의 공개 여부에 더해 **정보 사이의 연결과 그 판단 근거를 사용자가 이해할 수 있도록 보여주는 것**을 목표로 합니다. 공개 활동을 일괄적으로 제한하기보다, 사용자가 자신의 노출 상태를 확인하고 관리할 수 있도록 돕고자 합니다.
+Module 패키지는 현재 빈 `__init__.py`만 포함합니다. Module 테스트와 Evaluation의 빈 디렉터리는 `.gitkeep`으로 유지합니다.
 
-## 주요 사용자
+## 개발 환경 및 설치
 
-공개적인 학술·조직 활동으로 인해 디지털 발자국이 상대적으로 많이 존재하는 사용자를 우선 대상으로 합니다.
+Python **3.12**, Pydantic **v2**, pytest를 사용합니다. 공통 의존성은 root [requirements.txt](requirements.txt)에서 관리합니다.
 
-* 교수 및 대학원생
-* 학부연구생
-* 그 밖의 연구실 구성원
+Repository root에서 다음을 실행합니다. 아래 예시는 Windows PowerShell 기준입니다.
 
-서비스는 사용자가 **자신의 공개 정보를 점검하는 상황**을 기본 사용 시나리오로 설계합니다.
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
 
-## 목표 사용자 흐름
+가상환경을 활성화하지 않으면 아래 명령의 `python` 대신 `.\.venv\Scripts\python.exe`를 사용할 수 있습니다.
 
-1. 사용자가 이름·소속·이메일 등 기본 정보를 입력합니다.
-2. 공개 웹 검색을 통해 관련 페이지를 탐색합니다.
-3. 페이지에서 관련 정보를 추출하고 유형별로 구조화합니다.
-4. 여러 출처에서 발견한 정보의 조합을 분석합니다.
-5. 노출 정보, 관련 공격 유형, 판단 근거, 관리 우선순위와 대응 방안을 제공합니다.
+## 테스트 실행
 
-탐색 대상으로는 대학·연구실 홈페이지, GitHub, 학회 및 논문 페이지 등을 검토하고 있습니다. 실제 지원 범위와 검색 API는 추후 확정합니다.
+가상환경을 활성화한 뒤 Repository root에서 실행합니다.
 
-## 시스템 설계
+```powershell
+# 전체 테스트
+python -m pytest
 
-| 모듈                                 | 역할                             | 다음 단계에 전달할 정보           |
-| ---------------------------------- | ------------------------------ | ----------------------- |
-| Information Collection & Search    | 사용자 입력을 바탕으로 관련 공개 페이지 탐색      | URL, 제목, 검색 요약, 검색 질의   |
-| Information Extraction & Profiling | 본문에서 관련 정보를 추출·분류하고 사용자 프로필 구성 | 정보 유형, 값, 관계, 출처, 근거 문구 |
-| Risk Analysis                      | 노출 정보 조합 분석 및 설명·대응 방안 생성      | Risk Path, evaluation, reason, recommendations |
-| DFSA Orchestrator                  | 모듈 호출·상태 관리 및 결과 조합             | DFSAResult |
-| Dashboard / UI                     | DFSAResult 표시                         | 노출 현황, 판단 근거, 대응 방안 |
+# Contract validation 테스트
+python -m pytest tests/contract
 
-모듈 사이의 데이터 구조와 인터페이스는 팀 개발 명세서와 공통 Pydantic Contract로 관리합니다. A/B/C는 서로 직접 호출하지 않으며 Orchestrator가 전체 흐름을 관리합니다.
+# Orchestrator Mock Integration Test
+python -m pytest tests/integration
+```
 
-### 정보 추출과 구조화
+기존 Integration Test는 실제 외부 API 대신 Contract-valid Mock을 사용합니다. `pytest.ini`가 테스트 실행 시 `src`를 import 경로에 추가합니다. Module 테스트와 품질 평가 코드는 아직 없습니다. pytest 통과와 Evaluation 완료는 구분합니다.
 
-정보를 추출할 때에는 값만 저장하지 않고 **어디에서 발견했는지와 어떤 문구를 근거로 판단했는지**를 함께 보존하도록 설계합니다.
+## Orchestrator 사용 및 Module 연결
 
-v0.1 Exposure taxonomy는 다음 8개 유형을 사용합니다. Public 직렬화 값은 소문자입니다.
+Public entry point는 [src/dfsa/service/orchestrator.py](src/dfsa/service/orchestrator.py)에 있으며, 패키지에서도 import할 수 있습니다.
 
-| 정보 유형        | 예시              |
-| ------------ | --------------- |
-| Identity     | 이름, 사용자명        |
-| Contact      | 이메일, 전화번호       |
-| Affiliation  | 학교, 연구실, 회사     |
-| Relationship | 지도교수, 동료, 공동연구자 |
-| Activity     | 프로젝트, 학회, 논문    |
-| Interest     | 연구 분야, 관심 기술    |
-| Account      | GitHub, SNS 계정  |
-| Temporal     | 공개된 일정, 최근 행사   |
+pytest 밖에서 직접 Python 코드를 실행하려면 Repository root에서 `src`를 import 경로에 포함합니다.
 
-Module B는 동일인을 검증하고, `confirmed` Source에서 추출·검증된 Exposure만 공식 출력과 C 입력으로 전달합니다.
+```powershell
+$env:PYTHONPATH = (Resolve-Path .\src).Path
+```
 
-### 정보 조합에 기반한 위험 분석
+```python
+from dfsa.service import run_pipeline
 
-분석은 개별 정보의 존재뿐 아니라 **어떤 정보들이 함께 노출되어 있는지**를 살펴보는 방향으로 설계합니다.
+# Public Interface
+# run_pipeline(subject: Subject) -> DFSAResult
+```
 
-예를 들어 연구실 소속·지도교수 관계·학교 이메일이 함께 발견되면, 조직 관계를 이용한 사칭형 접근과 연결될 가능성을 검토할 수 있습니다. 결과에는 해당 정보 조합과 판단 이유를 함께 제시할 계획입니다.
+입력은 공통 `Subject` 모델이고, 반환 값은 공통 `DFSAResult`입니다. Module A/B/C는 서로 직접 호출하지 않으며, Orchestrator가 각 Module의 요청을 만들고 결과를 조합합니다.
 
-Module C는 R01~R05 Risk Rule을 적용하고 Risk Path, evaluation, `reason`, `recommendations`를 생성합니다. 설명과 대응 방안은 predefined deterministic template을 우선 사용하며, template만으로 설명하기 어려운 경우 C 내부 LLM fallback을 사용할 수 있습니다. LLM은 가능한 한 이미 결정된 Rule / Path 결과의 설명에 사용합니다.
+각 Module 담당자가 다음 함수를 구현하면 시작 코드에서 연결할 수 있습니다.
 
-Orchestrator는 C의 결과를 조합하며 설명이나 대응 방안을 새로 생성하거나 수정하지 않습니다. 실제 Rule Engine, template engine, LLM 연동은 이번 Contract PR에 포함하지 않습니다.
+| Module | 구현할 함수 | 구현 위치 |
+| --- | --- | --- |
+| A | `run_search(SearchRequest) -> SearchResponse` | `src/dfsa/modules/search/` |
+| B | `run_profiling(ProfilingRequest) -> ProfilingResponse` | `src/dfsa/modules/profiling/` |
+| C | `run_risk(RiskRequest) -> RiskResponse` | `src/dfsa/modules/risk/` |
 
-### 위험 수준과 결과 해석
+아래는 함수 구현 후의 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 담당자의 구현에서 가져올 함수이며, 현재 패키지에는 아직 정의되어 있지 않습니다.
 
-v0.1 Risk Path 상태는 `candidate`, `supported` 두 값입니다. Trigger가 충족되지 않으면 해당 Path를 생성하지 않습니다. `supported`의 구체적인 Supporting Evidence 판정 조건은 아직 미정이며 Module C 개발 과정에서 결정한 뒤 명세 변경 절차로 반영합니다. Risk Evaluation은 명세의 다섯 항목과 `YES`, `NO`, `UNKNOWN`, `NOT_APPLICABLE` 값을 사용합니다.
+```python
+from dfsa.contracts import Subject
+from dfsa.service import orchestrator
 
-**위험 수준은 실제 공격 성공 확률을 의미하지 않습니다.** 모든 결과에 판단 근거를 함께 제시하고, 발견된 정보와 분석 과정의 해석을 구분하여 설명하는 것을 목표로 합니다.
+# 애플리케이션 시작 시 실제 Module 함수 또는 Mock을 연결한다.
+orchestrator.run_search = run_search
+orchestrator.run_profiling = run_profiling
+orchestrator.run_risk = run_risk
 
-## 개발 범위
+subject = Subject(
+    name="홍길동",
+    organization="OO대학교",
+    email="gildong@univ.ac.kr",
+)
+result = orchestrator.run_pipeline(subject)
+```
 
-### 기본 구현 목표
+연결은 요청 처리 전에 수행합니다. Module이 연결되지 않으면 명시적으로 오류가 발생합니다. 현재 Mock Pipeline 검증은 위 Integration Test 명령으로 실행할 수 있습니다.
 
-* 사용자 기본 정보 입력
-* 공개 웹 검색 및 관련 페이지 수집
-* 노출 정보 추출·분류
-* 정보별 출처와 근거 저장
-* 정보 조합에 기반한 위험 분석
-* 결과 화면 및 기본 대응 안내
+## 개발 문서
 
-### 이후 확장 검토
+| 문서 | 역할 |
+| --- | --- |
+| [AGENTS.md](AGENTS.md) | Repository Map, Ownership, 작업 절차와 수정 정책 |
+| [팀 개발 명세서](docs/team-development-spec-v0.1.md) | v0.1 Architecture·Public Contract·Pipeline 정책의 단일 상세 Source of Truth |
+| [Evaluation 안내](evaluation/README.md) | Module별·E2E 평가 위치, 담당, 미결 기준과 데이터 관리 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 팀원 계정·이름 정보 |
 
-* 지원 정보 출처 확대
-* 정보 간 관계 그래프와 위험도 시각화
-* 구체적인 대응 가이드
-* 이전 검사와의 비교
-* 새로운 노출 모니터링 및 알림
-* 보고서 내보내기
-
-프로젝트명에 포함된 **Alert**와 관련된 지속 모니터링·알림 기능은 확장 기능으로 검토하고 있으며, 현재 제공되는 기능을 의미하지 않습니다.
-
-### 포함하지 않는 기능
-
-* 실제 피싱 메일 생성 및 전송
-* 특정 제3자를 대상으로 한 공격 자동화
-* 비공개 개인정보 수집
-* 로그인이나 인증이 필요한 사이트의 데이터 수집
-* 개인정보 삭제 대행
-* 실제 공격 성공 확률 예측
-
-## 팀 구성과 담당 역할
-
-아래는 현재 기획 단계에서 정한 역할 분담입니다. 담당 범위는 개발 과정에서 조정될 수 있습니다.
-
-| 팀원      | 담당 영역                                  | 주요 담당 내용                                                    |
-| ------- | -------------------------------------- | ----------------------------------------------------------- |
-| 정유채     | Information Collection & Search        | 사용자 입력 및 UI, 검색 API 연동, 검색 질의 생성, 결과 중복·관련성 처리, 검색 오류 대응    |
-| 서동균     | Information Extraction & Profiling / Orchestrator | 웹페이지 본문 처리·동일인 검증·Exposure 추출 및 근거 보존, 별도 Component인 Orchestrator의 전체 흐름·통합 관리 |
-| 강영림     | Risk Analysis                         | 정보 조합 분석, 위험 평가, 공격 유형 매핑, template 우선 및 필요 시 C 내부 LLM fallback을 통한 설명·대응 방안 생성 |
-
-## 협업 방식
-
-GitHub Flow를 기반으로 기능별 브랜치에서 개발하고, Pull Request를 통해 `main`에 병합하는 방식으로 운영할 예정입니다.
-
-* 기능 개발: `feature/<기능명>`
-* 오류 수정: `fix/<문제명>`
-* Pull Request: 변경 내용, 변경 이유, 테스트 방법 기재
-* Commit: `feat`, `fix`, `docs`, `refactor`, `test`, `chore` 등 변경 목적에 맞는 접두사 사용
-
-`main`에는 통합 후 정상 동작을 확인한 버전을 유지하는 것을 원칙으로 합니다.
-
-## 앞으로 확정할 사항
-
-* `supported`의 구체적인 Supporting Evidence 판정 조건
-* Module C 내부 template 및 LLM fallback의 세부 구현
-* 검색 API와 지원 정보 출처
-* Module별 및 E2E Evaluation의 Dataset / Metric / 절차와 정량 평가 기준 (추후 팀 회의에서 확정)
-
-실행 환경, 설치 방법, 사용 예시와 평가 결과는 구현이 구체화되는 대로 추가할 예정입니다.
+상세 Schema·Enum·Risk Rule·상태 정책과 팀 미결 사항은 기술 명세서를 확인합니다. 작업 위치와 수정 범위는 AGENTS.md를, 품질 평가 준비는 Evaluation 안내를 참조하세요.
