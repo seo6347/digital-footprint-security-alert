@@ -72,12 +72,24 @@ v0.1의 Architecture, Public Contract, Schema, Data Flow, Module 책임, Pipelin
 | `src/dfsa/contracts/profiling.py`    | Module B 요청·응답, Source·Exposure Contract              | 🔴       |
 | `src/dfsa/contracts/risk.py`         | Module C 요청·응답, RiskPath·Evaluation Contract          | 🔴       |
 | `src/dfsa/contracts/result.py`       | 최종 `DFSAResult`, stage, summary Contract              | 🔴       |
+| `src/dfsa/modules/`                  | 실제 Module Python 패키지 루트; 하위 담당 영역별 작업 위치 | 하위 정책 적용 |
+| `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
+| `src/dfsa/modules/profiling/`        | Module B 구현 위치 — 서동균 담당                         | 🟡       |
+| `src/dfsa/modules/risk/`             | Module C 구현 위치 — 강영림 담당                         | 🟡       |
 | `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
 | `src/dfsa/service/__init__.py`       | Public `run_pipeline` import 진입점                      | 🟡       |
 | `src/dfsa/service/orchestrator.py`   | 요청 변환, 호출·상태 제어, 오류·결과 조합 및 Module callable 연결 | 🟡       |
 | `tests/contract/`                    | Public Contract validation 회귀 테스트                     | 🟡       |
 | `tests/integration/`                 | Contract-valid Mock 기반 Orchestrator Pipeline 검증       | 🟡       |
+| `tests/modules/search/`              | Module A 동작·오류 처리 테스트 위치 — 정유채 담당          | 🟡       |
+| `tests/modules/profiling/`           | Module B 동작·오류 처리 테스트 위치 — 서동균 담당          | 🟡       |
+| `tests/modules/risk/`                | Module C 동작·오류 처리 테스트 위치 — 강영림 담당          | 🟡       |
 | `tests/fixtures/`                    | Contract 기준 Mock JSON                                 | 🟡       |
+| `evaluation/README.md`               | tests와 Evaluation의 구분, 담당·미결 기준·데이터 관리 안내 | 🟡       |
+| `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
+| `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |
+| `evaluation/module_c/`               | Module C 품질 평가 위치 — 강영림 담당                    | 🟡       |
+| `evaluation/e2e/`                    | E2E 품질 평가 위치 — 팀 공동 협의, 단독 Owner 미확정      | 🟡       |
 | `pytest.ini`                         | pytest 탐색 및 import 설정                                 | 🟡       |
 | `requirements.txt`                   | 공통 Python dependency 관리                               | 🟡       |
 | `.gitignore`                         | 캐시·로컬 환경·민감 파일 제외 설정                                  | 🟡       |
@@ -88,13 +100,14 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 
 ## 4. 아직 구현되지 않은 영역
 
-아래는 현재 책임 영역이며, 실제 파일이나 entry point가 이미 존재한다고 가정하지 않는다.
+아래는 아직 기능 구현이 없는 영역이다. Module A/B/C의 패키지와 테스트·평가 폴더는 준비되어 있지만 실행 entry point나 실제 구현은 없다.
 
 | 영역               | 현재 상태 | 정책                          |
 | ---------------- | ----- | --------------------------- |
-| Module A         | 구현 전  | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
-| Module B         | 구현 전  | 🟡 서동균 담당 / 내부 구현은 Owner 재량 |
-| Module C         | 구현 전  | 🟡 강영림 담당 / 내부 구현은 Owner 재량 |
+| Module A         | 폴더·패키지만 준비, 구현 전 | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
+| Module B         | 폴더·패키지만 준비, 구현 전 | 🟡 서동균 담당 / 내부 구현은 Owner 재량 |
+| Module C         | 폴더·패키지만 준비, 구현 전 | 🟡 강영림 담당 / 내부 구현은 Owner 재량 |
+| Evaluation       | 폴더만 준비, Dataset / Metric / 절차 미확정 | 🟡 각 Module 담당 / E2E는 팀 협의 |
 | Frontend / UI    | 구현 전  | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
 
 구현이 추가되면 실제 경로와 주요 entry point를 Repository Map에 반영한다.
@@ -146,7 +159,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | Integration    | §25 Public Interface, §32 Integration 순서                                     |
 | UI             | §23 Service → UI, §37 UI Contract                                            |
 | 개발 순서 / 완료 조건  | §31, §32, §34, §36                                                           |
-| Evaluation     | §39 Evaluation 이후 계획                                                         |
+| Evaluation     | §39 Evaluation 계획 및 미결 사항, `evaluation/README.md`                         |
 
 Evaluation의 Dataset, Metric, 절차처럼 아직 확정되지 않은 내용은 임의로 결정하지 않는다.
 
