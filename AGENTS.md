@@ -1,144 +1,285 @@
 # DFSA Repository 작업 가이드
 
-## Purpose / Source of Truth
+이 문서는 DFSA Repository에서 개발자와 Coding Agent가 **어디를 수정할 수 있는지, 어떤 규칙을 따라야 하는지, 어떤 문서를 확인해야 하는지** 빠르게 판단하기 위한 가이드이다.
 
-- 개발자와 Coding Agent가 작업 위치, 책임자, 변경 범위를 찾기 위한 가이드이다.
-- 상세 기술 명세나 구현 설명서를 대체하지 않는다.
-- v0.1 Architecture / Public Contract / Schema / Pipeline 정책의 단일 상세 Source of Truth는
-  [docs/team-development-spec-v0.1.md](docs/team-development-spec-v0.1.md)이다.
-- README는 프로젝트 소개이고 CONTRIBUTING은 현재 팀원 계정 목록이다. 상세 결정은 명세를 따른다.
-- 명세와 코드의 명백한 충돌은 먼저 보고한다. 요청 범위를 넘어 어느 쪽도 임의 수정하지 않는다.
+상세 기술 명세나 구현 설명서를 대체하지 않는다.
 
-## Repository Modification Policy
+---
 
-| 정책 | 의미 | 작업 기준 |
-| --- | --- | --- |
-| 🟢 Owner 자유 수정 | 담당 Component의 내부 구현 | 요청 범위와 명세를 지키는 한 내부 설계는 Owner 재량 |
-| 🟡 담당 영역 | 다른 담당자에게 영향이 있는 변경 | 다른 담당자가 수정하려면 Owner와 협의 |
-| 🔴 팀 공통 Public Contract | 여러 Component가 공유하는 계약 | Owner도 팀 합의 없이 임의 변경 금지 |
+## 1. Source of Truth
 
-- 🟡 영역은 해당 Owner가 작업할 때 🟢 원칙을 적용한다. 🔴 계약에는 이 예외가 없다.
-- 내부 구현의 자율성이 Public field, Enum, required/optional, ID 구조, Interface 변경을 허용하지 않는다.
-- 🔴 변경이 필요하면 변경 이유와 영향받는 Component를 먼저 보고하고 명세 §29 절차를 따른다.
-- 이미 명시적으로 합의·승인된 변경 요청은 그 범위에서 진행한다. 편의를 위한 계약 확장은 금지한다.
-- 테스트나 fixture를 약화하여 잘못된 Schema를 허용하지 않는다.
-- 개별 Owner가 명세에 없는 공통 파일은 임의의 Owner를 지정하지 말고 영향받는 담당자와 협의한다.
+v0.1의 Architecture, Public Contract, Schema, Data Flow, Module 책임, Pipeline 정책의 기준은 다음 문서이다.
 
-## Repository Map
+`docs/team-development-spec-v0.1.md`
 
-아래 Path는 현재 실제 존재한다. 역할·Owner가 바뀌지 않는 작은 helper/test는 개별 나열하지 않는다.
+* README는 프로젝트 소개용이다.
+* CONTRIBUTING은 팀원 정보 관리용이다.
+* 상세 개발 결정은 `team-development-spec-v0.1.md`를 따른다.
+* 코드와 명세가 명백하게 충돌하면 임의로 수정하지 말고 먼저 보고한다.
 
-| Path | 역할 / 수정할 때 | 수정 정책 |
-| --- | --- | --- |
-| `AGENTS.md` | 작업 위치·Owner·수정 정책 또는 작업 방식 변경 시 갱신 | 🟡 팀 공통 가이드 |
-| `docs/team-development-spec-v0.1.md` | 상세 계약·책임·흐름·공통 결정의 기준; 합의된 변경 반영 | 🔴 팀 공통 명세 |
-| `README.md` | 프로젝트 소개 및 명세 안내; 소개가 변경·불일치할 때 수정 | 🟡 팀 공통 문서 |
-| `CONTRIBUTING.md` | 팀원 계정·이름 목록; 구성원 정보 변경 시 수정 | 🟡 팀 공통 문서 |
-| `src/dfsa/` | `src/` 아래 Python 패키지; 현재는 Contract 코드만 존재 | 하위 파일 정책 적용 |
-| `src/dfsa/__init__.py` | 패키지 초기화; 패키지 진입 구조 변경 시 확인 | 🟡 공통 패키지 |
-| `src/dfsa/contracts/` | A/B/C·Orchestrator·UI가 공유할 Pydantic v2 계약 | 🔴 팀 공통 Public Contract |
-| `src/dfsa/contracts/__init__.py` | 주요 Public Model import/export 진입점 | 🔴 공통 export |
-| `src/dfsa/contracts/common.py` | 공통 모델 기반, Subject, ErrorDetail, Enum; 공통 계약 변경 시 확인 | 🔴 공통 모델·Enum |
-| `src/dfsa/contracts/search.py` | A의 요청·응답 및 검색 결과 모델; Search 계약 변경 시 확인 | 🔴 A 경계 계약 |
-| `src/dfsa/contracts/profiling.py` | B의 요청·응답, 재사용 Source·Exposure; Profiling 계약 변경 시 확인 | 🔴 B 경계·공유 모델 |
-| `src/dfsa/contracts/risk.py` | C의 요청·응답, Evaluation·RiskPath; Risk 계약 변경 시 확인 | 🔴 C 경계·공유 모델 |
-| `src/dfsa/contracts/result.py` | UI가 받을 DFSAResult·stages·summary; 최종 결과 계약 변경 시 확인 | 🔴 Service/UI 계약 |
-| `tests/contract/` | 입력·출력 validation 회귀 검증; 계약 변경·검증 결함 수정 시 갱신 | 🟡 계약 담당·영향받는 Owner 협의 |
-| `tests/fixtures/` | Contract-valid JSON 예시; 합의된 계약 변경 시 관련 테스트와 함께 갱신 | 🟡 데이터, 🔴 계약 의미 변경 |
-| `pytest.ini` | 테스트 탐색 및 src import 설정; 테스트 실행 구조 변경 시 확인 | 🟡 공통 실행 설정 |
-| `requirements.txt` | 공통 dependency source; 필요한 새 package를 추가할 때 갱신 | 🟡 공통 의존성 |
-| `.gitignore` | 로컬 환경·캐시·민감 설정 제외; 새 제외 항목이 필요할 때 추가 | 🟡 공통 설정; 기존 항목 보존 |
+현재는 상세 명세를 하나의 파일로 유지한다.
 
-### 아직 구현되지 않은 영역
+향후 Module별 내부 설계가 커지면 문서 분리를 검토할 수 있지만, 그 전까지 `team-development-spec-v0.1.md`가 단일 상세 Source of Truth이다.
 
-명세 §26의 추천 구조와 실제 생성된 구조를 구분한다. 아래는 현재 파일 경로가 아니라 책임 영역이다.
+---
 
-| 영역 | 현재 상태 | 향후 내부 구현 수정 정책 |
-| --- | --- | --- |
-| Module A | 구현 디렉터리·실행 entry point 없음 | 🟡 정유채 담당, Owner 내부 구현은 🟢 |
-| Module B | 구현 디렉터리·실행 entry point 없음 | 🟡 서동균 담당, Owner 내부 구현은 🟢 |
-| Module C | 구현 디렉터리·실행 entry point 없음 | 🟡 강영림 담당, Owner 내부 구현은 🟢 |
-| Orchestrator | Service 디렉터리·실행 entry point 없음 | 🟡 서동균 담당, Owner 내부 구현은 🟢 |
-| Integration tests | 통합 테스트 디렉터리 없음 | 🟡 관련 Component Owner 협의 |
-| Frontend / UI | UI 디렉터리·실행 entry point 없음 | 🟡 정유채 담당, Owner 내부 구현은 🟢 |
+## 2. 수정 정책
 
-위 영역의 파일이나 entry point를 이미 존재하는 것으로 가정하지 않는다. 구현 추가 후 실제 경로로 Map을 갱신한다.
+| 정책             | 의미                            | 작업 기준                                  |
+| -------------- | ----------------------------- | -------------------------------------- |
+| 🟢 자유 수정       | 담당 Component의 내부 구현           | Public Contract와 명세를 지키는 범위에서 Owner 재량 |
+| 🟡 담당 영역       | 특정 Owner가 관리하는 영역             | 다른 담당자가 수정하려면 Owner와 먼저 협의             |
+| 🔴 공통 Contract | 여러 Component가 공유하는 Public API | 팀 합의 없이 누구도 임의 변경 금지                   |
 
-## Ownership
+### 기본 원칙
 
-명세 §3, §31, §37 기준이다. Contract 파일 이름과 Component 내부 구현의 소유권은 동일하지 않다.
+* 🟡 영역도 해당 Owner에게는 내부 구현 범위에서 🟢로 본다.
+* 🔴 영역은 Owner 여부와 관계없이 팀 합의 없이 변경하지 않는다.
+* 내부 구현 자율성은 Public field, Enum, required/optional, ID 구조, Public Interface 변경까지 포함하지 않는다.
+* 테스트나 fixture를 완화해서 잘못된 Schema를 통과시키지 않는다.
+* 명세에 없는 공통 영역에 임의로 Owner를 지정하지 않는다.
 
-| 영역 | Owner | 책임 요약 |
-| --- | --- | --- |
-| Module A / Frontend | 정유채 | 검색 수집·후보 관련성 판단 및 UI |
-| Module B | 서동균 | 동일인 검증·Exposure 추출/검증 및 Source/Evidence 보존 |
-| Module C | 강영림 | Risk 분석·상태·평가 및 설명/대응 방안 생성 |
-| Orchestrator | 서동균 | B와 별도 Component; 호출 순서·상태·실패 전파·결과 조합 |
-| Phase 1 공통 Contract | 서동균 + 팀 Review | 공통 계약 고정; 개인 판단으로 계약 변경 불가 |
+### 🔴 영역 변경이 필요한 경우
 
-- A/B/C는 서로 직접 호출하지 않는다. Orchestrator가 Public Interface를 통해 흐름을 관리한다.
-- 설명·reason·recommendations 생성은 C 책임이다. Orchestrator는 이를 새로 생성하거나 수정하지 않는다.
-- C의 template 우선 및 내부 LLM fallback 방향, 미결 supported 정책은 명세를 확인한다.
+먼저 다음을 정리해 보고한다.
 
-## Spec Lookup Guide
+1. 변경이 필요한 이유
+2. 영향받는 Component
+3. 예상 변경 파일
+4. Public Contract 영향
 
-매 작업마다 상세 명세 전체를 다시 읽을 필요는 없다. AGENTS 전체 확인 → 작업 영역 파악 → heading/keyword 검색 → 관련 절 읽기 순서로 확인한다.
+이미 팀에서 합의된 변경이라면 합의된 범위 안에서만 수정한다.
 
-| 작업 | 실제 명세 heading / 확인할 절 |
-| --- | --- |
-| 범위·책임 파악 | §1 문서 목적, §2 v0.1 프로젝트 범위, §3 Component 및 담당 범위 |
-| Module A | §3.1, §9 SearchRequest, §10 SearchResponse |
-| Module B | §3.2, §11 ProfilingRequest, §12 Module B 내부 Pipeline, §13~17 Identity / Exposure / Source |
-| Module C | §3.3, §18 RiskRequest, §19 C Risk Rule v0.1, §20 Risk Path Status, §21 Risk Evaluation, §22 RiskResponse |
-| Orchestrator | §3.4, §23 DFSAResult, §24 Orchestrator Pipeline 제어, §25 Public Interface |
-| Contract | 해당 Schema, §6 공통 규칙, §7 ID Ownership, §8 공통 Module Status, §26~29 Contract / Validation / Enum / 변경 규칙 |
-| Test / Fixture | 해당 Contract, §27 Contract Validation 규칙, §30 Mock Data, §32 Integration 순서, §35 PR Merge 최소 조건 |
-| UI | §23 Schema 7 — Service → UI, §37 UI Contract |
-| 개발 순서·완료 조건 | §31 개발 순서, §32 Integration 순서, §34 PR 규칙, §36 Module별 Definition of Done — v0.1 |
-| 품질 평가 설계 | §39 Evaluation 이후 계획; 미결 Dataset / Metric / 절차를 임의 확정하지 않음 |
+---
 
-heading은 `rg -n '^#|Public Interface|Contract 변경 규칙' docs/team-development-spec-v0.1.md` 등으로 찾는다.
-영향 범위가 여러 Component에 걸치면 각 관련 절과 공통 규칙을 함께 읽는다.
+## 3. Repository Map
 
-## Agent Workflow
+작은 helper나 단순 test 파일은 모두 나열하지 않는다.
+주요 책임, Public Contract, Component 진입점처럼 다른 작업에 영향을 주는 파일만 관리한다.
 
-1. `AGENTS.md` 전체와 현재 branch / working tree를 확인한다. 기존 사용자 변경을 보존한다.
-2. 대상 Path, Owner, 🟢/🟡/🔴 정책을 확인한다. 없는 구현이나 entry point를 추측하지 않는다.
-3. 관련 명세 heading / keyword를 검색하고 필요한 절을 읽는다.
-4. 요청 범위와 현재 개발 단계를 확인한다. 이후 Phase의 구현을 요청 없이 시작하지 않는다.
-5. 🔴 변경 필요성이나 명세 충돌·미결 사항은 먼저 보고한다. 승인된 범위 밖의 임의 변경은 하지 않는다.
-6. 합의된 범위에서 구현한다. 상세 알고리즘·Schema를 이 문서에 중복 정의하지 않는다.
-7. 관련 테스트를 실행한다. Contract 변경이면 영향받는 fixture와 테스트도 함께 검증한다.
-8. 아래 정책에 해당할 때만 문서를 갱신한다.
-9. 변경 내용, 테스트 결과, 미결 사항을 보고한다. PR 본문은 §34의 What / Why / Test 형식을 따른다.
+| Path                                 | 역할 / 수정 시점                                            | 정책       |
+| ------------------------------------ | ----------------------------------------------------- | -------- |
+| `AGENTS.md`                          | Repository 구조, Ownership, 수정 정책, Agent 작업 방식이 바뀔 때 갱신 | 🟡       |
+| `docs/team-development-spec-v0.1.md` | Architecture, Contract, 책임, Pipeline 등 팀 공통 결정 관리     | 🔴       |
+| `README.md`                          | 프로젝트 소개 및 주요 문서 안내                                    | 🟡       |
+| `CONTRIBUTING.md`                    | 팀원 계정·이름 등 협업 정보 관리                                   | 🟡       |
+| `src/dfsa/`                          | DFSA Python 패키지 루트                                    | 하위 정책 적용 |
+| `src/dfsa/__init__.py`               | 패키지 초기화                                               | 🟡       |
+| `src/dfsa/contracts/`                | A/B/C, Orchestrator, UI가 공유하는 Pydantic Contract       | 🔴       |
+| `src/dfsa/contracts/__init__.py`     | Public Contract import/export 진입점                     | 🔴       |
+| `src/dfsa/contracts/common.py`       | 공통 모델, Subject, ErrorDetail, Enum                     | 🔴       |
+| `src/dfsa/contracts/search.py`       | Module A 요청·응답 Contract                               | 🔴       |
+| `src/dfsa/contracts/profiling.py`    | Module B 요청·응답, Source·Exposure Contract              | 🔴       |
+| `src/dfsa/contracts/risk.py`         | Module C 요청·응답, RiskPath·Evaluation Contract          | 🔴       |
+| `src/dfsa/contracts/result.py`       | 최종 `DFSAResult`, stage, summary Contract              | 🔴       |
+| `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
+| `src/dfsa/service/__init__.py`       | Public `run_pipeline` import 진입점                      | 🟡       |
+| `src/dfsa/service/orchestrator.py`   | 요청 변환, 호출·상태 제어, 오류·결과 조합 및 Module callable 연결 | 🟡       |
+| `tests/contract/`                    | Public Contract validation 회귀 테스트                     | 🟡       |
+| `tests/integration/`                 | Contract-valid Mock 기반 Orchestrator Pipeline 검증       | 🟡       |
+| `tests/fixtures/`                    | Contract 기준 Mock JSON                                 | 🟡       |
+| `pytest.ini`                         | pytest 탐색 및 import 설정                                 | 🟡       |
+| `requirements.txt`                   | 공통 Python dependency 관리                               | 🟡       |
+| `.gitignore`                         | 캐시·로컬 환경·민감 파일 제외 설정                                  | 🟡       |
 
-### 현재 실행 환경과 검증
+Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께 확인한다.
 
-- Python 3.12, Pydantic v2, pytest를 사용한다. 공통 의존성은 root `requirements.txt`에서 관리한다.
-- 테스트 실행 진입점은 `python -m pytest`이다. `pytest.ini`가 `src`를 import 경로에 추가한다.
-- Windows의 현재 로컬 환경에서는 `.venv\Scripts\python.exe -m pytest`를 사용할 수 있다.
-- 관련 Contract 테스트만 실행할 때는 `python -m pytest tests/contract`를 사용한다.
-- 문서만 변경하면 Path·Owner·명세 참조·diff를 대조한다. 검증 결과와 테스트 미실행 사유를 보고한다.
+---
 
-## Documentation Update Policy
+## 4. 아직 구현되지 않은 영역
+
+아래는 현재 책임 영역이며, 실제 파일이나 entry point가 이미 존재한다고 가정하지 않는다.
+
+| 영역               | 현재 상태 | 정책                          |
+| ---------------- | ----- | --------------------------- |
+| Module A         | 구현 전  | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
+| Module B         | 구현 전  | 🟡 서동균 담당 / 내부 구현은 Owner 재량 |
+| Module C         | 구현 전  | 🟡 강영림 담당 / 내부 구현은 Owner 재량 |
+| Frontend / UI    | 구현 전  | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
+
+구현이 추가되면 실제 경로와 주요 entry point를 Repository Map에 반영한다.
+
+---
+
+## 5. Ownership
+
+| 영역            | Owner          | 책임 요약                                               |
+| ------------- | -------------- | --------------------------------------------------- |
+| Module A      | 정유채            | 공개 정보 검색·수집 및 후보 관련성 판단                             |
+| Frontend / UI | 정유채            | 사용자 입력 및 최종 결과 표시                                   |
+| Module B      | 서동균            | 동일인 검증, Exposure 추출·검증, Source/Evidence 관리          |
+| Module C      | 강영림            | Risk 분석, RiskPath 생성, 평가, reason·recommendations 생성 |
+| Orchestrator  | 서동균            | A → B → C 호출 제어, 상태 관리, 실패 전파, 결과 조합                |
+| 공통 Contract   | 서동균 + 팀 Review | Public Contract 관리 및 변경 검토                          |
+
+### Component 간 핵심 규칙
+
+* A/B/C는 서로 직접 호출하지 않는다.
+* Orchestrator가 Public Interface를 통해 전체 흐름을 관리한다.
+* `reason`, `recommendations` 등 Risk 설명 생성은 Module C 책임이다.
+* Orchestrator는 C의 설명을 새로 생성하거나 수정하지 않는다.
+* Module C의 template 우선 / LLM fallback 및 미결 정책은 상세 명세를 따른다.
+
+---
+
+## 6. Spec Lookup Guide
+
+큰 작업을 시작할 때 `team-development-spec-v0.1.md` 전체를 매번 읽을 필요는 없다.
+
+다음 순서로 확인한다.
+
+1. `AGENTS.md` 확인
+2. 작업 영역과 Owner 확인
+3. 상세 명세에서 관련 heading / keyword 검색
+4. 필요한 섹션만 읽기
+5. 작업 수행
+
+| 작업             | 우선 확인할 명세                                                                    |
+| -------------- | ---------------------------------------------------------------------------- |
+| 전체 범위·책임       | §1 문서 목적, §2 프로젝트 범위, §3 Component 및 담당 범위                                   |
+| Module A       | §3.1, §9 SearchRequest, §10 SearchResponse                                   |
+| Module B       | §3.2, §11 ProfilingRequest, §12~17 Identity / Exposure / Source              |
+| Module C       | §3.3, §18 RiskRequest, §19~22 Risk Rule / Status / Evaluation / RiskResponse |
+| Orchestrator   | §3.4, §23 DFSAResult, §24 Pipeline 제어, §25 Public Interface                  |
+| Contract 변경    | 해당 Schema, §6~8 공통 규칙, §26~29 Contract 관련 규칙                                 |
+| Test / Fixture | 해당 Contract, §27 Validation, §30 Mock Data, §35 Merge 조건                     |
+| Integration    | §25 Public Interface, §32 Integration 순서                                     |
+| UI             | §23 Service → UI, §37 UI Contract                                            |
+| 개발 순서 / 완료 조건  | §31, §32, §34, §36                                                           |
+| Evaluation     | §39 Evaluation 이후 계획                                                         |
+
+Evaluation의 Dataset, Metric, 절차처럼 아직 확정되지 않은 내용은 임의로 결정하지 않는다.
+
+영향 범위가 여러 Component에 걸리면 해당 Component 섹션과 공통 규칙을 함께 확인한다.
+
+---
+
+## 7. Agent Workflow
+
+큰 작업은 다음 순서로 진행한다.
+
+1. `AGENTS.md`와 현재 branch / working tree를 확인한다.
+2. 기존 사용자 변경사항을 보존한다.
+3. 작업 대상 Path와 🟢/🟡/🔴 정책을 확인한다.
+4. 관련 명세 섹션만 찾아 읽는다.
+5. 요청 범위와 현재 개발 단계를 확인한다.
+6. 이후 Phase의 구현을 요청 없이 미리 시작하지 않는다.
+7. 🔴 변경 필요, 명세 충돌, 미결 사항을 발견하면 먼저 보고한다.
+8. 승인된 범위에서 구현한다.
+9. 관련 테스트를 실행한다.
+10. 필요한 경우 Documentation Update Policy에 따라 문서를 갱신한다.
+11. 변경 내용, 테스트 결과, 남은 미결 사항을 보고한다.
+
+PR 본문은 기술 명세의 `What / Why / Test` 형식을 따른다.
+
+---
+
+## 8. 테스트 및 검증
+
+기본 환경:
+
+* Python 3.12
+* Pydantic v2
+* pytest
+
+기본 전체 테스트:
+
+```bash
+python -m pytest
+```
+
+Contract 테스트만 실행:
+
+```bash
+python -m pytest tests/contract
+```
+
+Windows 로컬 환경에서는 필요하면 다음을 사용할 수 있다.
+
+```bash
+.venv\Scripts\python.exe -m pytest
+```
+
+문서만 변경한 경우에는 테스트 실행이 필수가 아닐 수 있다. 대신 다음을 확인한다.
+
+* 실제 Path와 문서 내용 일치 여부
+* Ownership 일치 여부
+* 명세 참조 정확성
+* 변경 diff
+
+테스트를 실행하지 않았다면 그 이유를 최종 보고에 남긴다.
+
+---
+
+## 9. Documentation Update Policy
 
 모든 코드 변경마다 문서를 수정하지 않는다.
 
-| 대상 | 갱신하거나 갱신을 검토할 때 |
-| --- | --- |
-| `AGENTS.md` | 주요 파일/폴더 추가·삭제, 책임·entry point·Ownership·수정 정책·작업 방식 변경 |
-| 상세 기술 명세 | Public Contract / Schema / Enum / Interface / Architecture / Data Flow / Module 책임 / Pipeline·상태·Error 정책 / 팀 공통 결정 변경 |
+### `AGENTS.md`를 갱신하는 경우
 
-- Repository Map은 구조·주요 책임이 변할 때 갱신한다. 작은 helper/test 추가만으로 모두 나열하지 않는다.
-- 내부 refactoring, helper 추가, 변수명 변경 등은 일반적으로 상세 명세 갱신 대상이 아니다.
-- 상세 명세 변경은 §29 절차를 따른다. 이미 합의된 의미를 이 가이드에서 별도로 재정의하지 않는다.
-- 이 문서는 약 100~200줄의 짧은 가이드로 유지하고, Schema·함수 내부 알고리즘 설명은 넣지 않는다.
+* 주요 폴더 또는 파일 추가·삭제
+* 주요 파일의 책임 변경
+* Component entry point 변경
+* Ownership 변경
+* 수정 정책 변경
+* Agent 작업 방식 변경
 
-## 향후 문서 분리 정책
+작은 helper, 단순 test, 내부 refactoring은 일반적으로 반영하지 않는다.
 
-- 현재는 중앙 상세 명세 하나를 유지하며 Module별 Spec을 새로 만들지 않는다.
-- 내부 설계 증가, 무관한 내용 탐색 부담, Module별 Algorithm/Provider/Evaluation 설명 필요,
-  동시 편집 충돌 증가, 공통 Contract와 내부 설계의 분리 필요가 생기면 팀과 문서 분리를 검토한다.
-- 분리하더라도 Architecture, Public Contract, Common Enum, Data Flow, Public Interface,
-  ID Ownership, Pipeline 상태 규칙, Contract 변경 정책은 가능한 한 중앙 명세에 유지한다.
-- 향후 Module별 문서에는 내부 구현·상세 설계를 둔다. 실제 분리 시 이 가이드의 Map과 참조를 갱신한다.
+### `team-development-spec-v0.1.md`를 갱신하는 경우
+
+* Public Contract 변경
+* Schema / Enum 변경
+* Public Interface 변경
+* Architecture / Data Flow 변경
+* Module 책임 변경
+* Pipeline 정책 변경
+* 상태 / Error 처리 정책 변경
+* 팀 공통 결정 변경
+
+내부 구현 방식, helper 함수, 변수명 변경 등은 일반적으로 상세 명세 대상이 아니다.
+
+Contract 관련 변경은 명세의 Contract 변경 절차를 따른다.
+
+---
+
+## 10. 문서 유지 원칙
+
+`AGENTS.md`는 상세 구현 설명서가 아니다.
+
+다음 원칙을 유지한다.
+
+* 가능한 한 짧게 유지한다.
+* Schema 전체를 복사하지 않는다.
+* 함수 내부 알고리즘을 설명하지 않는다.
+* 상세 정책을 중복 정의하지 않는다.
+* Repository 구조와 작업 규칙을 빠르게 찾는 용도로 유지한다.
+
+---
+
+## 11. 향후 문서 분리
+
+현재는 `team-development-spec-v0.1.md` 하나를 중앙 상세 명세로 유지한다.
+
+다음 상황이 생기면 Module별 문서 분리를 검토한다.
+
+* Module 내부 설계가 크게 증가함
+* 특정 Module 작업을 위해 무관한 내용을 지나치게 많이 탐색해야 함
+* Algorithm / Provider / Evaluation 등 별도 상세 문서가 필요함
+* 하나의 명세 파일에서 동시 편집 충돌이 잦아짐
+* 공통 Contract와 Module 내부 설계를 분리할 필요가 생김
+
+분리 이후에도 다음 항목은 가능한 한 중앙 명세에 유지한다.
+
+* Architecture
+* Public Contract
+* Common Enum
+* Data Flow
+* Public Interface
+* ID Ownership
+* Pipeline 상태 규칙
+* Contract 변경 정책
+
+Module별 문서에는 내부 구현과 상세 설계를 둔다.
+
+문서를 실제로 분리할 때는 `AGENTS.md`의 Repository Map과 참조 경로도 함께 갱신한다.
