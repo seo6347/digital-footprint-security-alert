@@ -1,11 +1,29 @@
 """Conservative URL normalization for search result deduplication."""
 
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit, unquote_plus
 
 
 class URLNormalizationError(ValueError):
     """Raised when a URL cannot be safely normalized."""
 
+def _remove_tracking_params(query: str) -> str:
+    """utm_* 파라미터만 제거하고 나머지 항목은 원형을 보존한다."""
+    if not query:
+        return query
+
+    kept_parts: list[str] = []
+
+    for part in query.split("&"):
+        # 값이 아닌 파라미터 이름만 확인한다.
+        raw_name = part.partition("=")[0]
+        name = unquote_plus(raw_name).casefold()
+
+        if name.startswith("utm_"):
+            continue
+
+        kept_parts.append(part)
+
+    return "&".join(kept_parts)
 
 def normalize_url(url: str) -> str:
     """Create a comparison URL while preserving page-identifying data.
@@ -89,7 +107,7 @@ def normalize_url(url: str) -> str:
             parts.scheme.lower(),
             host,
             parts.path or "/",
-            parts.query,
+            _remove_tracking_params(parts.query),
             "",  # Fragment is excluded from the comparison URL.
         )
     )

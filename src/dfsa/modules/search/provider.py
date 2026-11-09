@@ -51,7 +51,7 @@ class SerpApiProvider:
         self,
         api_key: str | None = None,
         *,
-        timeout: float = 60.0,
+        timeout: float = 10.0,
     ) -> None:
         key = api_key if api_key is not None else os.getenv(
             "SERPAPI_API_KEY"

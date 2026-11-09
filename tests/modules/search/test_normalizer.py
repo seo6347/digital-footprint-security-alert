@@ -130,14 +130,49 @@ def test_query_order_is_preserved():
 
 
 @pytest.mark.parametrize(
-    "url",
+    ("url", "expected"),
     [
-        "HTTPS://Example.COM:443/profile#intro",
-        "https://example.com",
-        "https://example.com/profile?id=1&lang=ko",
+        (
+            "https://example.com/profile?utm_source=google",
+            "https://example.com/profile",
+        ),
+        (
+            "https://example.com/profile"
+            "?utm_source=google&utm_medium=email&utm_campaign=test",
+            "https://example.com/profile",
+        ),
+        (
+            "https://example.com/profile"
+            "?id=123&utm_source=google&page=2",
+            "https://example.com/profile?id=123&page=2",
+        ),
+        (
+            "https://example.com/profile?UTM_SOURCE=google",
+            "https://example.com/profile",
+        ),
+        (
+            "https://example.com/profile?%75tm_source=google",
+            "https://example.com/profile",
+        ),
+        (
+            "https://example.com/profile?utm_source",
+            "https://example.com/profile",
+        ),
+        (
+            "https://example.com/profile"
+            "?q=a%20b&utm_source=google&tag=x&tag=y&empty=",
+            "https://example.com/profile"
+            "?q=a%20b&tag=x&tag=y&empty=",
+        ),
+        (
+            "https://example.com/profile?id=123&page=2",
+            "https://example.com/profile?id=123&page=2",
+        ),
+        (
+            "https://example.com/profile?note=utm_source",
+            "https://example.com/profile?note=utm_source",
+        ),
     ],
 )
-def test_normalization_is_idempotent(url):
-    normalized = normalize_url(url)
-
-    assert normalize_url(normalized) == normalized
+def test_tracking_parameters_are_removed(url, expected):
+    assert normalize_url(url) == expected

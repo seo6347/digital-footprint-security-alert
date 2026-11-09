@@ -377,3 +377,49 @@ def test_invalid_result_items(client, mock_urlopen, item):
         client.search("숭실대학교")
 
     assert exc_info.value.code == "SEARCH_INVALID_RESPONSE"
+@pytest.mark.parametrize(
+    ("options", "expected_timeout"),
+    [
+        ({}, 10.0),
+        ({"timeout": 3.0}, 3.0),
+    ],
+)
+def test_timeout_is_passed_to_urlopen(
+    monkeypatch,
+    options,
+    expected_timeout,
+):
+    import json
+    from unittest.mock import MagicMock
+
+    from dfsa.modules.search import provider as provider_module
+
+    response = MagicMock()
+    response.read.return_value = json.dumps(
+        {
+            "search_metadata": {"status": "Success"},
+            "organic_results": [],
+        }
+    ).encode("utf-8")
+
+    mocked_urlopen = MagicMock()
+    mocked_urlopen.return_value.__enter__.return_value = response
+
+    monkeypatch.setattr(
+        provider_module,
+        "urlopen",
+        mocked_urlopen,
+    )
+
+    client = provider_module.SerpApiProvider(
+        api_key="test-key",
+        **options,
+    )
+
+    assert client.search("테스트 검색") == []
+
+    mocked_urlopen.assert_called_once()
+    assert (
+        mocked_urlopen.call_args.kwargs["timeout"]
+        == expected_timeout
+    )

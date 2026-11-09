@@ -425,3 +425,64 @@ def test_invalid_url_raises_instead_of_silently_skipping():
 
     with pytest.raises(URLNormalizationError):
         deduplicate_results(queries)
+def test_urls_differing_only_in_tracking_params_are_merged():
+    first_url = (
+        "https://example.com/profile"
+        "?id=123&utm_source=google"
+    )
+    second_url = (
+        "https://example.com/profile"
+        "?id=123&utm_source=newsletter&utm_medium=email"
+    )
+
+    queries = [
+        QuerySearchResults(
+            query_id="q_001",
+            results=[make_result(first_url, rank=2)],
+        ),
+        QuerySearchResults(
+            query_id="q_002",
+            results=[make_result(second_url, rank=1)],
+        ),
+    ]
+
+    results = deduplicate_results(queries)
+
+    assert len(results) == 1
+    assert results[0].url == first_url
+    assert results[0].normalized_url == (
+        "https://example.com/profile?id=123"
+    )
+    assert discovery_pairs(results[0]) == [
+        ("q_001", 2),
+        ("q_002", 1),
+    ]
+
+
+def test_different_page_ids_are_not_merged_after_tracking_removal():
+    queries = [
+        QuerySearchResults(
+            query_id="q_001",
+            results=[
+                make_result(
+                    "https://example.com/profile"
+                    "?id=123&utm_source=google"
+                ),
+                make_result(
+                    "https://example.com/profile"
+                    "?id=456&utm_source=google"
+                ),
+            ],
+        ),
+    ]
+
+    results = deduplicate_results(queries)
+
+    assert len(results) == 2
+    assert [
+        result.normalized_url
+        for result in results
+    ] == [
+        "https://example.com/profile?id=123",
+        "https://example.com/profile?id=456",
+    ]
