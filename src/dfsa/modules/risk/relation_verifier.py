@@ -5,6 +5,12 @@ from dataclasses import dataclass
 
 from dfsa.contracts.profiling import Exposure
 
+from .relation_types import (
+    RelationType,
+    RELATIONS,
+    is_valid_relation_pair,
+)
+
 
 RELATION_CUES = (
     "지도교수",
@@ -38,6 +44,7 @@ class RelationCandidate:
     evidence: str
     has_relation_cue: bool
     has_negation_cue: bool
+    relation_types: tuple[RelationType, ...] = ()
 
 
 def normalize_text(text: str) -> str:
@@ -64,6 +71,17 @@ def extract_relation_candidates(
             if not left_value or not right_value:
                 continue
 
+            matched_types = tuple(
+                relation.relation_type
+                for relation in RELATIONS
+                if is_valid_relation_pair(
+                    relation.relation_type,
+                    left.type,
+                    right.type,
+                )
+            )
+
+
             right_sources = {
                 source.source_id
                 for source in right.sources
@@ -73,7 +91,6 @@ def extract_relation_candidates(
                 if source.source_id not in right_sources:
                     continue
 
-                # Either exposure's evidence may contain both values.
                 evidence_texts = [
                     item.evidence
                     for item in left.sources + right.sources
@@ -115,6 +132,7 @@ def extract_relation_candidates(
                                 cue in normalized
                                 for cue in NEGATION_CUES
                             ),
+                            relation_types=matched_types,
                         )
                     )
 
