@@ -107,3 +107,66 @@ def test_invalid_edge():
             GraphEdge("subject", "missing_node", "has_exposure")
         )
 
+def test_add_verified_relation():
+    exposures = [
+        make_exposure("exp_001", ExposureType.RELATIONSHIP, "src_001"),
+        make_exposure("exp_002", ExposureType.AFFILIATION, "src_001"),
+    ]
+
+    graph = build_exposure_graph(exposures)
+
+    graph.add_verified_relation(
+        "exp_001",
+        "exp_002",
+        "지도교수와 연구실 소속 관계가 확인됨",
+    )
+
+    assert GraphEdge(
+        source="exposure:exp_001",
+        target="exposure:exp_002",
+        relation="verified_relation",
+        evidence="지도교수와 연구실 소속 관계가 확인됨",
+    ) in graph.edges
+
+
+def test_verified_relation_without_evidence():
+    exposures = [
+        make_exposure("exp_001", ExposureType.RELATIONSHIP, "src_001"),
+        make_exposure("exp_002", ExposureType.AFFILIATION, "src_001"),
+    ]
+
+    graph = build_exposure_graph(exposures)
+
+    with pytest.raises(ValueError):
+        graph.add_verified_relation("exp_001", "exp_002", "")
+
+
+def test_verified_relation_with_unknown_exposure():
+    exposures = [
+        make_exposure("exp_001", ExposureType.RELATIONSHIP, "src_001"),
+    ]
+
+    graph = build_exposure_graph(exposures)
+
+    with pytest.raises(ValueError):
+        graph.add_verified_relation(
+            "exp_001",
+            "exp_999",
+            "관계 확인 근거",
+        )
+
+
+def test_verified_relation_with_same_exposure():
+    exposures = [
+        make_exposure("exp_001", ExposureType.RELATIONSHIP, "src_001"),
+    ]
+
+    graph = build_exposure_graph(exposures)
+
+    with pytest.raises(ValueError):
+        graph.add_verified_relation(
+            "exp_001",
+            "exp_001",
+            "관계 확인 근거",
+        )
+

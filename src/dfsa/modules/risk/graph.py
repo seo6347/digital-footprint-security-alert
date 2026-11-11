@@ -39,6 +39,33 @@ class ExposureGraph:
         if edge not in self.edges:
             self.edges.append(edge)
 
+    def add_verified_relation(
+        self,
+        exposure_id_1: str,
+        exposure_id_2: str,
+        evidence: str,
+    ):
+        """Record an explicitly verified exposure relationship."""
+
+        if not evidence or not evidence.strip():
+            raise ValueError(
+                "Verified relation requires evidence"
+            )
+
+        if exposure_id_1 == exposure_id_2:
+            raise ValueError(
+                "Cannot connect an exposure to itself"
+            )
+
+        self.add_edge(
+            GraphEdge(
+                source=f"exposure:{exposure_id_1}",
+                target=f"exposure:{exposure_id_2}",
+                relation="verified_relation",
+                evidence=evidence,
+            )
+        )
+
 
 def build_exposure_graph(exposures: list[Exposure]) -> ExposureGraph:
     """Construct a graph using validated exposure-source relationships."""
