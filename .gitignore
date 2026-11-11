@@ -4,3 +4,9 @@ __pycache__/
 *.pyc
 .env
 .vscode/
+# Optional ML training components
+src/dfsa/modules/risk/relation_dataset.py
+src/dfsa/modules/risk/dataset_stats.py
+tests/modules/risk/test_relation_dataset.py
+tests/modules/risk/test_dataset_stats.py
+data/relation/
