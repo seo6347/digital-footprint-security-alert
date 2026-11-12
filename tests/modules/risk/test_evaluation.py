@@ -63,3 +63,55 @@ def test_full_coverage_does_not_imply_supported():
     assert result.attack_utility == EvaluationValue.UNKNOWN
     assert result.sensitivity == EvaluationValue.UNKNOWN
 
+
+from dfsa.modules.risk.evaluation import determine_path_status
+
+
+def test_candidate_without_verified_evidence():
+    features = replace(
+        make_features(),
+        support_coverage=1.0,
+        connected_support_count=1,
+    )
+
+    assert determine_path_status(features) == "candidate"
+
+
+def test_supported_with_verified_evidence():
+    features = replace(
+        make_features(),
+        support_coverage=1.0,
+        connected_support_count=1,
+    )
+
+    assert determine_path_status(
+        features,
+        evidence_verified=True,
+    ) == "supported"
+
+
+def test_candidate_without_connected_support():
+    features = replace(
+        make_features(),
+        support_coverage=1.0,
+        connected_support_count=0,
+    )
+
+    assert determine_path_status(
+        features,
+        evidence_verified=True,
+    ) == "candidate"
+
+
+def test_candidate_without_support():
+    features = replace(
+        make_features(),
+        support_coverage=0.0,
+        connected_support_count=0,
+    )
+
+    assert determine_path_status(
+        features,
+        evidence_verified=True,
+    ) == "candidate"
+

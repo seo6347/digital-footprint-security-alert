@@ -60,3 +60,25 @@ def evaluate_risk(features: RiskFeatures) -> RiskAssessment:
         evidence_confidence=evidence_confidence,
     )
 
+
+
+def determine_path_status(
+    features: RiskFeatures,
+    evidence_verified: bool = False,
+) -> str:
+    """Determine whether a risk path has sufficient verified support."""
+
+    if features.trigger_coverage < 1.0:
+        return "candidate"
+
+    if features.support_coverage <= 0:
+        return "candidate"
+
+    if features.connected_support_count <= 0:
+        return "candidate"
+
+    if not evidence_verified:
+        return "candidate"
+
+    return "supported"
+
