@@ -134,3 +134,40 @@ def test_response_contract_validation():
 
     assert validated == response
 
+
+
+
+@pytest.mark.parametrize(
+    "exposure_types,expected_rule",
+    [
+        ([ExposureType.RELATIONSHIP], "R01"),
+        ([ExposureType.AFFILIATION, ExposureType.INTEREST], "R02"),
+        ([ExposureType.ACTIVITY, ExposureType.INTEREST], "R03"),
+        ([ExposureType.TEMPORAL], "R04"),
+        ([ExposureType.ACCOUNT], "R05"),
+    ],
+)
+def test_all_rules_graph_evaluation(
+    exposure_types,
+    expected_rule,
+):
+    exposures = [
+        make_exposure(f"exp_{i:03d}", exp_type)
+        for i, exp_type in enumerate(exposure_types, start=1)
+    ]
+
+    response = run_risk(make_request(exposures))
+
+    path = next(
+        path for path in response.risk_paths
+        if path.rule_id == expected_rule
+    )
+
+    assert path.evaluation.searchability == EvaluationValue.YES
+
+    assert path.evaluation.cross_source_linkability == EvaluationValue.UNKNOWN
+
+    assert path.evaluation.evidence_confidence == EvaluationValue.UNKNOWN
+
+    assert path.path_status == RiskPathStatus.CANDIDATE
+
