@@ -114,7 +114,7 @@ def test_evaluation_fields():
     response = run_risk(request)
     evaluation = response.risk_paths[0].evaluation
 
-    assert evaluation.searchability == EvaluationValue.UNKNOWN
+    assert evaluation.searchability == EvaluationValue.YES
     assert evaluation.cross_source_linkability == EvaluationValue.UNKNOWN
     assert evaluation.attack_utility == EvaluationValue.UNKNOWN
     assert evaluation.sensitivity == EvaluationValue.UNKNOWN
