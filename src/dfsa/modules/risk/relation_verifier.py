@@ -138,3 +138,52 @@ def extract_relation_candidates(
 
     return candidates
 
+from enum import Enum
+
+
+class RelationEvidenceStatus(str, Enum):
+    SUPPORTED_CANDIDATE = "supported_candidate"
+    CONTRADICTED = "contradicted"
+    UNCERTAIN = "uncertain"
+
+
+NEGATIVE_RELATION_PATTERNS = (
+    "소속되어 있지 않",
+    "소속이 아니",
+    "소속이 아니다",
+    "소속하지 않",
+    "지도교수가 아니",
+    "참여하지 않",
+    "참석하지 않",
+    "관련이 없",
+    "관계가 없",
+    "사용하지 않",
+    "소유하지 않",
+    "not affiliated",
+    "not supervised",
+    "does not belong",
+    "does not own",
+)
+
+
+def classify_relation_evidence(
+    candidate: RelationCandidate,
+) -> RelationEvidenceStatus:
+    """Conservatively classify evidence cues for a relation candidate."""
+
+    text = normalize_text(candidate.evidence)
+
+    # Explicit negative patterns take precedence.
+    if any(pattern in text for pattern in NEGATIVE_RELATION_PATTERNS):
+        return RelationEvidenceStatus.CONTRADICTED
+
+    if candidate.has_negation_cue:
+        return RelationEvidenceStatus.CONTRADICTED
+
+    # A keyword is not sufficient to establish a relation.
+    if not candidate.has_relation_cue:
+        return RelationEvidenceStatus.UNCERTAIN
+
+    # A matched cue provides a positive candidate, not verified support.
+    return RelationEvidenceStatus.SUPPORTED_CANDIDATE
+
