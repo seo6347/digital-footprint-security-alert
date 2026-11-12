@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from dfsa.contracts.common import ErrorDetail
+from dfsa.contracts.common import ErrorDetail, IdentityStatus
 
 
 class FetchError(str, Enum):
@@ -122,3 +122,31 @@ class ParseFailure:
     final_url: str
     kind: ParseError
     error: ErrorDetail
+
+
+@dataclass(frozen=True)
+class IdentityEvidence:
+    """Comparison diagnostic pointing to original ParsedDocument text runs.
+
+    These references are not validated Exposure evidence or generated quotes.
+    Indices address document.texts; block_id identifies their structural unit.
+    """
+
+    kind: str
+    block_id: int
+    text_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class IdentityDecision:
+    """Phase 3 result; only confirmed decisions provide extraction scope roots.
+
+    Each target ID refers to a ParsedBlock in the input source. Its descendants
+    form one bounded person region. Empty IDs never authorize page-wide use.
+    """
+
+    source_id: str
+    identity_status: IdentityStatus
+    reasons: tuple[str, ...]
+    evidence: tuple[IdentityEvidence, ...] = ()
+    target_block_ids: tuple[int, ...] = ()
