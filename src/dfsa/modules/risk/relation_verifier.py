@@ -187,3 +187,29 @@ def classify_relation_evidence(
     # A matched cue provides a positive candidate, not verified support.
     return RelationEvidenceStatus.SUPPORTED_CANDIDATE
 
+
+
+from .relation_patterns import get_relation_pattern
+
+
+def classify_typed_relation(
+    candidate: RelationCandidate,
+    relation_type: RelationType,
+) -> RelationEvidenceStatus:
+    """Classify evidence cues for a specific relation type."""
+
+    if relation_type not in candidate.relation_types:
+        return RelationEvidenceStatus.UNCERTAIN
+
+    text = normalize_text(candidate.evidence)
+    pattern = get_relation_pattern(relation_type)
+
+    # Negative evidence takes precedence.
+    if any(cue in text for cue in pattern.negative):
+        return RelationEvidenceStatus.CONTRADICTED
+
+    if any(cue in text for cue in pattern.positive):
+        return RelationEvidenceStatus.SUPPORTED_CANDIDATE
+
+    return RelationEvidenceStatus.UNCERTAIN
+
