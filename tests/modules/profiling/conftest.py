@@ -72,3 +72,33 @@ def response_factory():
 @pytest.fixture
 def opener_factory():
     return FakeOpener
+
+
+@pytest.fixture
+def phase4_subject():
+    from dfsa.contracts.common import Subject
+
+    return Subject(name="Alice Kim", organization="Example University", email="alice@example.com")
+
+
+@pytest.fixture
+def phase4_parse():
+    from dfsa.modules.profiling._types import FetchedHTML, ParsedDocument
+    from dfsa.modules.profiling.parsing import parse_html
+
+    def parse(html):
+        result = parse_html(FetchedHTML(
+            "src_phase4", "https://example.com/old", "https://example.com/profile",
+            html.encode("utf-8"), "text/html", None, 200,
+        ))
+        assert isinstance(result, ParsedDocument)
+        return result
+    return parse
+
+
+@pytest.fixture
+def phase4_card():
+    def card(fields="", name="Alice Kim"):
+        return (f'<div class="profile-card"><h2>{name}</h2>'
+                f'<p>Email: alice@example.com</p>{fields}</div>')
+    return card
