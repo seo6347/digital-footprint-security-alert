@@ -16,7 +16,7 @@ from dfsa.contracts.risk import (
 
 from .rules import match_rules
 from .templates import generate_explanation
-
+from .status import determine_path_status
 
 def run_risk(request: RiskRequest) -> RiskResponse:
     """Analyze validated exposures and return risk paths."""
@@ -42,7 +42,7 @@ def run_risk(request: RiskRequest) -> RiskResponse:
             risk_path_id=f"path_{index:03d}",
             rule_id=match.rule_id,
             category=match.category,
-            path_status=RiskPathStatus.CANDIDATE,
+            path_status=determine_path_status(match,request.exposures,),
             exposure_ids=list(match.exposure_ids),
             evaluation=evaluation,
             reason=reason,
