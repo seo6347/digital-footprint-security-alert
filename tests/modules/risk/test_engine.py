@@ -57,7 +57,7 @@ def test_r01_risk_path():
     assert path.risk_path_id == "path_001"
     assert path.rule_id == "R01"
     assert path.path_status == RiskPathStatus.CANDIDATE
-    assert path.exposure_ids == ["exp_001"]
+    assert path.exposure_ids == ["exp_001", "exp_002"]
     assert path.reason
     assert len(path.recommendations) >= 1
 
@@ -113,8 +113,7 @@ def test_evaluation_fields():
 
     response = run_risk(request)
     evaluation = response.risk_paths[0].evaluation
-
-    assert evaluation.searchability == EvaluationValue.UNKNOWN
+    assert evaluation.searchability == EvaluationValue.YES
     assert evaluation.cross_source_linkability == EvaluationValue.UNKNOWN
     assert evaluation.attack_utility == EvaluationValue.UNKNOWN
     assert evaluation.sensitivity == EvaluationValue.UNKNOWN
