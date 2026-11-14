@@ -1,5 +1,5 @@
 
-"""Rule-based risk path status for DFSA v0.1."""
+"""Conservative rule-based risk path status for DFSA v0.1."""
 
 from dfsa.contracts.common import ExposureType, RiskPathStatus
 from dfsa.contracts.profiling import Exposure
@@ -11,7 +11,7 @@ def determine_path_status(
     match: RuleMatch,
     exposures: list[Exposure],
 ) -> RiskPathStatus:
-    """Classify the evidentiary support for a risk scenario."""
+    """Determine scenario support without inventing relationships."""
 
     exposure_map = {
         exp.exposure_id: exp
@@ -30,59 +30,27 @@ def determine_path_status(
         if exp_id in exposure_map
     ]
 
-    trigger_types = {exp.type for exp in triggers}
-    support_types = {exp.type for exp in supports}
-
+    # R01: Explicit advisor relationship.
     if match.rule_id == "R01":
-        advisor = any(
+        has_advisor = any(
             exp.type == ExposureType.RELATIONSHIP
             and (exp.relation or "").strip().casefold() == "advisor"
             for exp in triggers
         )
-        if advisor and support_types & {
-            ExposureType.AFFILIATION,
-            ExposureType.CONTACT,
-        }:
-            return RiskPathStatus.SUPPORTED
 
-    elif match.rule_id == "R02":
-        if (
-            {ExposureType.AFFILIATION, ExposureType.INTEREST}
-            <= trigger_types
-            and support_types & {
-                ExposureType.ACTIVITY,
+        has_support = any(
+            exp.type in {
+                ExposureType.AFFILIATION,
                 ExposureType.CONTACT,
             }
-        ):
+            for exp in supports
+        )
+
+        if has_advisor and has_support:
             return RiskPathStatus.SUPPORTED
 
-    elif match.rule_id == "R03":
-        if (
-            {ExposureType.ACTIVITY, ExposureType.INTEREST}
-            <= trigger_types
-            and support_types & {
-                ExposureType.ACCOUNT,
-                ExposureType.CONTACT,
-            }
-        ):
-            return RiskPathStatus.SUPPORTED
-
-    elif match.rule_id == "R04":
-        if (
-            ExposureType.TEMPORAL in trigger_types
-            and ExposureType.ACTIVITY in support_types
-        ):
-            return RiskPathStatus.SUPPORTED
-
-    elif match.rule_id == "R05":
-        if (
-            ExposureType.ACCOUNT in trigger_types
-            and support_types & {
-                ExposureType.CONTACT,
-                ExposureType.IDENTITY,
-            }
-        ):
-            return RiskPathStatus.SUPPORTED
-
+    # R02-R05: Exposure type combinations can identify
+    # attack scenarios, but do not independently establish
+    # semantic relationships between exposures.
     return RiskPathStatus.CANDIDATE
 
