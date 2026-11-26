@@ -156,15 +156,16 @@ class AnalysisResponse(RequestContract):
     errors: list[ErrorDetail] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_output_ids(self) -> Self:
+    def validate_response(self) -> Self:
         unique_ids(self.phishing_risk_scenarios, "scenario_id")
         unique_ids(self.security_recommendations, "recommendation_id")
         has_results = (
             self.personal_profile is not None or self.relationship_graph.nodes
             or self.phishing_risk_scenarios or self.security_recommendations
         )
-        if self.status == ModuleStatus.FAILED and has_results:
-            raise ValueError("Failed analysis cannot contain usable results")
-        if self.status == ModuleStatus.PARTIAL_SUCCESS and not has_results:
-            raise ValueError("Partial analysis must contain usable results")
+        expected = ModuleStatus.SUCCESS
+        if self.errors:
+            expected = ModuleStatus.PARTIAL_SUCCESS if has_results else ModuleStatus.FAILED
+        if self.status != expected:
+            raise ValueError("Analysis status does not match its results and errors")
         return self

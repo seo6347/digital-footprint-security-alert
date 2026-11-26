@@ -51,10 +51,14 @@ class SearchResult(ContractModel):
 
 def validate_search_references(queries: list[QueryExecution], results: list[SearchResult]) -> None:
     query_ids = unique_ids(queries, "query_id")
+    successful_query_ids = {query.query_id for query in queries if query.status == QueryStatus.SUCCESS}
     unique_ids(results, "source_id")
     for result in results:
-        if not result.discovered_by or any(item.query_id not in query_ids for item in result.discovered_by):
+        discovered_by = {item.query_id for item in result.discovered_by}
+        if not discovered_by or not discovered_by <= query_ids:
             raise ValueError("Search result must reference a recorded query")
+        if discovered_by.isdisjoint(successful_query_ids):
+            raise ValueError("Search result must reference at least one successful query")
 
 
 def has_failed_search_query(queries: list[QueryExecution]) -> bool:

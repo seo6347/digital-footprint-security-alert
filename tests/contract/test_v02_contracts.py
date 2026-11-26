@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from dfsa.contracts import (
-    DFSAResult, ExecutionTime, ExplorationResult, NavigationEntry, ProfilingRequest,
+    AnalysisResponse, DFSAResult, ExecutionTime, ExplorationResult, NavigationEntry, ProfilingRequest,
     SearchRequest, SearchResponse, Subject,
 )
 
@@ -297,3 +297,52 @@ def test_public_analysis_outputs_only_reference_discovered_exposure_types(field)
         DFSAResult.model_validate(data)
     data[field][0]["exposure_types"] = [] if field == "security_recommendations" else ["affiliation"]
     assert DFSAResult.model_validate(data).status == "success"
+
+
+@pytest.mark.parametrize("includes_successful_query", [False, True])
+def test_search_results_require_at_least_one_successful_discovery_query(
+    includes_successful_query, v02_fixtures,
+):
+    response = v02_fixtures["stage_responses"]()[0]
+    good = response.queries[0]
+    failed = good.model_copy(update={"query_id": "q_failed", "status": "failed"})
+    discovered_by = [{"query_id": failed.query_id}]
+    if includes_successful_query:
+        discovered_by.append({"query_id": good.query_id})
+    result = response.results[0].model_copy(update={"discovered_by": discovered_by})
+    candidate = response.model_copy(update={
+        "status": "partial_success", "queries": [failed, good], "results": [result],
+    })
+    if not includes_successful_query:
+        with pytest.raises(ValidationError, match="at least one successful query"):
+            SearchResponse.model_validate(candidate)
+    else:
+        validated = SearchResponse.model_validate(candidate)
+        assert [entry.query_id for entry in validated.results[0].discovered_by] == [failed.query_id, good.query_id]
+
+
+@pytest.mark.parametrize("status,has_errors,has_results,valid", [
+    ("success", False, False, True),
+    ("success", False, True, True),
+    ("success", True, True, False),
+    ("partial_success", True, True, True),
+    ("partial_success", False, True, False),
+    ("partial_success", True, False, False),
+    ("failed", True, False, True),
+    ("failed", False, False, False),
+    ("failed", True, True, False),
+])
+def test_analysis_status_matches_errors_and_usable_results(status, has_errors, has_results, valid):
+    payload = {
+        "schema_version": "v0.2", "request_id": "req_fixture", "status": status,
+        "errors": [{"code": "TEST_FAILURE", "message": "Analysis step failed.", "retryable": False}]
+        if has_errors else [],
+        "security_recommendations": [
+            {"recommendation_id": "rec_fixture", "title": "Check exposure", "description": "Review public settings."}
+        ] if has_results else [],
+    }
+    if valid:
+        assert AnalysisResponse.model_validate(payload).status == status
+    else:
+        with pytest.raises(ValidationError, match="Analysis status does not match"):
+            AnalysisResponse.model_validate(payload)
