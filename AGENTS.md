@@ -8,7 +8,7 @@
 
 ## 1. Source of Truth
 
-v0.2 개발 목표, Architecture, Public Contract 및 팀 결정은 `docs/team-development-spec-v0.2.md`를 기준으로 한다. 해당 문서 PR의 팀 Review 및 Merge 이후 적용한다.
+v0.2 개발 목표, Architecture, Public Contract 및 팀 결정의 기준은 `docs/team-development-spec-v0.2.md`다. Contract Freeze 시점은 해당 명세 §12를 따른다.
 
 `docs/team-development-spec-v0.1.md`는 기존 실행과 개발 이력의 기준으로 보존한다. 신규 개발은 v0.2 공개 계약과 호출 경계를 사용한다.
 
@@ -86,7 +86,8 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `tests/modules/risk/`                | Module C 동작·오류 처리 테스트 위치 — 강영림 담당          | 🟡       |
 | `tests/fixtures/v02/` | v0.2 단계별 합성 객체와 UI 개발용 결과 JSON | 🟡 |
 | `tests/legacy/` | v0.1 계약 및 Orchestrator 회귀 테스트와 fixture | 🟡 |
-| `evaluation/README.md`               | tests와 Evaluation의 구분, 담당·미결 기준·데이터 관리 안내 | 🟡       |
+| `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 수동 Live runner | 🟡 |
+| `evaluation/README.md`               | v0.1 평가 준비 이력과 v0.2 검증 범위 | 🟡       |
 | `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
 | `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |
 | `evaluation/module_c/`               | Module C 품질 평가 위치 — 강영림 담당                    | 🟡       |
@@ -110,7 +111,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | Frontend / UI | 담당자가 신규 구현 및 기술 상세 수정 |
 | Evaluation | 별도 정량적 평가 제외; 기능·회귀·Live E2E 검증 유지 |
 
-예정 경로는 실제 생성된 파일이 아니다. 구조 및 Contract 변경 후 Repository Map을 갱신한다.
+v0.2 담당자별 구현 예정 파일, import 경로, callable 연결 예시는 [README의 Module 연결 안내](README.md#v02-orchestrator-사용-및-module-연결)를 따른다. 구조 및 Contract 변경 후 Repository Map을 갱신한다.
 
 ---
 

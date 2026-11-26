@@ -8,16 +8,16 @@ DFSA는 사용자의 공개된 디지털 발자국을 모으고 구조화하여,
 
 v0.2 공통 Contract, 네 단계 Orchestrator, 합성 Mock이 준비되어 각 담당자가 독립적으로 개발할 수 있다. v0.1 실제 모듈과 Offline E2E는 기존 동작의 회귀 검증에 사용한다. 실제 검색부터 공개 정보 확인까지의 Live E2E 성공은 아직 확인되지 않았다.
 
-v0.2는 팀 Review 대상인 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기준으로 다음 기능을 개발한다. 이 문서 변경만으로 v0.2 기능이 구현된 것은 아니다.
+v0.2 개발은 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기준으로 한다. Contract Freeze는 [PR #14](https://github.com/seo6347/digital-footprint-security-alert/pull/14)의 팀 승인과 `main` 병합 시 적용한다.
 
-| 영역 | v0.2 개발 방향 |
+| 영역 | v0.2 구현 상태 및 후속 범위 |
 | --- | --- |
-| Search | 이름+학교 기반 실제 SerpApi 검색, 이메일 선택 |
-| Page Explorer | 승인된 연구실 내 제한적 다중 페이지 탐색 |
-| Profiling | Rule + 학교 제공 LLM API, 원문 근거 검증 |
-| Analysis | Profile, Relationship Graph, 교육용 사칭 위험 사례, 대응 방안 |
-| Orchestrator | 검색·탐색 이력, 단계별 실제 시간, DFSAResult |
-| Web UI | 담당자 주도 구현, React + TypeScript + FastAPI 초기 추천 |
+| Search | 선택 이메일과 검색 Contract 구현. 실제 v0.2 SerpApi 검색은 후속 |
+| Page Explorer | 문서 확보 코드 재사용 가능, 독립 호출 경계 구현. 다중 페이지 탐색은 후속 |
+| Profiling | 문서 입력과 Exposure/Evidence Contract 구현. Rule + LLM 처리는 후속 |
+| Analysis | Profile·Graph·교육 사례·대응 방안 Contract 구현. 생성 로직은 후속 |
+| Orchestrator | 검색·탐색·Profiling·Analysis 호출 제어, 실행 시간, DFSAResult 구현 |
+| Web UI | 합성 DFSAResult 제공. UI 및 API 연결은 후속 |
 
 본인 또는 동의한 대상의 승인된 로컬 시연을 목표로 하며, 실제 피싱 메시지 생성·발송 및 무관한 제3자 개인정보 수집은 제외한다. v0.2에서는 필요에 따라 외부 라이브러리를 활용하고 별도 정량적 Evaluation은 요구하지 않는다.
 
@@ -49,20 +49,19 @@ DFSA/
 │   ├── integration/
 │   ├── fixtures/v02/                # 단계별 합성 Mock과 UI JSON
 │   ├── legacy/                      # v0.1 계약·Orchestrator 회귀 검증
+│   ├── e2e/                         # v0.1 실제 모듈 회귀 및 수동 Live runner
 │   └── modules/                     # Module별 테스트
 │       ├── search/
 │       ├── explorer/                # Fetch, URL Policy, Parsing 회귀 테스트
 │       ├── profiling/
 │       └── risk/
-└── evaluation/                      # 품질 평가 준비 위치
+└── evaluation/                      # v0.1 평가 준비 이력
     ├── README.md
     ├── module_a/
     ├── module_b/
     ├── module_c/
     └── e2e/
 ```
-
-Page Explorer에서 기존 HTML Fetch, URL Policy, Parsing을 재사용할 수 있다. v0.2 Orchestrator에는 독립 Explorer 호출 경계가 있으며 실제 다중 페이지 탐색은 후속 기능 개발 범위다.
 
 ## 개발 환경 및 설치
 
@@ -96,8 +95,6 @@ python -m pytest tests/integration
 v0.2 Integration 테스트는 Contract를 만족하는 합성 Mock을 사용합니다. `pytest.ini`는 테스트 실행 시 `src`를 import 경로에 추가합니다. `tests/legacy/`와 `tests/e2e/`의 기존 v0.1 회귀 테스트는 전체 실행에서 계속 검증합니다.
 
 ## v0.2 Orchestrator 사용 및 Module 연결
-
-Public entry point는 [src/dfsa/service/orchestrator.py](src/dfsa/service/orchestrator.py)에 있으며, 패키지에서도 import할 수 있습니다.
 
 pytest 밖에서 직접 Python 코드를 실행하려면 Repository root에서 `src`를 import 경로에 포함합니다.
 
@@ -144,9 +141,10 @@ print(result.model_dump_json(indent=2))
 | 문서 | 역할 |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Repository Map, Ownership, 작업 절차와 수정 정책 |
-| [v0.2 팀 개발 명세서](docs/team-development-spec-v0.2.md) | 신규 MVP Architecture·Contract·개발 정책 (팀 Review 후 적용) |
+| [v0.2 팀 개발 명세서](docs/team-development-spec-v0.2.md) | 현재 v0.2 Architecture·Contract·개발 정책 |
 | [v0.1 팀 개발 명세서](docs/team-development-spec-v0.1.md) | 기존 구현 및 구조 분리 단계의 계약, 개발 이력 |
-| [Evaluation 안내](evaluation/README.md) | v0.1 평가 준비 이력; v0.2는 기능 검증 및 Live E2E 중심 |
+| [Evaluation 이력](evaluation/README.md) | v0.1 평가 준비 기록과 v0.2 검증 범위 |
+| [v0.1 E2E 안내](tests/e2e/README.md) | 현재 레거시 회귀 실행 경로와 초기 E2E 개발 기록 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 팀원 계정·이름 정보 |
 
-상세 Schema·Enum·Risk Rule·상태 정책과 팀 미결 사항은 기술 명세서를 확인합니다. 작업 위치와 수정 범위는 AGENTS.md를, 품질 평가 준비는 Evaluation 안내를 참조하세요.
+Schema·Enum·상태 정책은 해당 버전의 중앙 명세를, 작업 위치와 수정 범위는 AGENTS.md를 참조하세요.
