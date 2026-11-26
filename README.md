@@ -34,11 +34,13 @@ DFSA/
 │   ├── team-development-spec-v0.1.md  # 기존 구현/이력
 │   └── team-development-spec-v0.2.md  # 신규 개발 명세
 ├── src/dfsa/
+│   ├── _documents.py                # Explorer와 Module B의 공유 내부 문서 자료형
 │   ├── contracts/                   # 공통 Pydantic Contract
 │   ├── service/
 │   │   └── orchestrator.py          # Pipeline 실행·결과 조합
-│   └── modules/                     # v0.1 구현 위치
+│   └── modules/                     # v0.1 실행에 사용하는 모듈
 │       ├── search/                  # Module A
+│       ├── explorer/                # Page Explorer 문서 확보
 │       ├── profiling/               # Module B
 │       └── risk/                    # Module C
 ├── tests/
@@ -47,6 +49,7 @@ DFSA/
 │   ├── fixtures/
 │   └── modules/                     # Module별 테스트
 │       ├── search/
+│       ├── explorer/                # Fetch, URL Policy, Parsing 회귀 테스트
 │       ├── profiling/
 │       └── risk/
 └── evaluation/                      # 품질 평가 준비 위치
@@ -57,7 +60,7 @@ DFSA/
     └── e2e/
 ```
 
-위 구조는 현재 v0.1 실행 코드 기준이며 Explorer, Analysis Contract 및 UI는 후속 PR에서 추가/변경한다.
+HTML Fetch, URL Policy, Parsing을 Page Explorer 패키지로 분리했으며, 현재 v0.1 실행 흐름에서는 Module B가 이 기능을 사용한다. 독립적인 Explorer 실행 단계와 Orchestrator 연결은 후속 Contract PR에서 추가하고, 제한적 다중 페이지 탐색은 이후 Explorer 기능 PR에서 구현한다. Analysis Contract와 UI도 후속 PR에서 다룬다.
 
 ## 개발 환경 및 설치
 
@@ -117,7 +120,7 @@ from dfsa.service import run_pipeline
 | B | `run_profiling(ProfilingRequest) -> ProfilingResponse` | `src/dfsa/modules/profiling/` |
 | C | `run_risk(RiskRequest) -> RiskResponse` | `src/dfsa/modules/risk/` |
 
-아래는 현재 v0.1 함수 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 모듈에서 가져올 수 있습니다. v0.2에서는 후속 Contract PR을 통해 Explorer와 run_analysis를 추가/교체합니다.
+아래는 현재 v0.1 함수 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 모듈에서 가져올 수 있습니다. 후속 v0.2 Contract PR에서는 독립 Explorer 단계를 연결하고 `run_risk`를 `run_analysis`로 교체합니다.
 
 ```python
 from dfsa.contracts import Subject
