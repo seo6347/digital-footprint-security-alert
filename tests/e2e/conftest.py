@@ -15,7 +15,8 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 
 from dfsa.contracts import Subject
-from dfsa.modules.profiling import fetch, run_profiling
+from dfsa.modules.explorer import fetch
+from dfsa.modules.profiling import run_profiling
 from dfsa.modules.risk.engine import run_risk
 from dfsa.modules.search import provider, run_search
 from dfsa.service import orchestrator

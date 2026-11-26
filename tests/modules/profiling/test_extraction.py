@@ -151,7 +151,7 @@ def test_forged_ancestor_scope_cannot_borrow_other_person_fields(phase4_parse, p
 @pytest.mark.parametrize("name,email", [("Professor A", "a@example.com"), ("Professor B", "b@example.com"),
                                        ("Member C", "c@example.com"), ("Member D", "d@example.com")])
 def test_phase2_people_fixture_through_identity_to_extraction(phase4_parse, name, email):
-    html = (Path(__file__).parent / "fixtures/html/people.html").read_text(encoding="utf-8")
+    html = (Path(__file__).parents[1] / "fixtures/html/people.html").read_text(encoding="utf-8")
     document = phase4_parse(html)
     identity = verify_identity(Subject(name=name, email=email, organization="Example University"), document)
     assert identity.identity_status == IdentityStatus.CONFIRMED

@@ -22,12 +22,10 @@ import re
 from html import unescape
 from html.parser import HTMLParser
 
+from dfsa._documents import ParsedBlock, ParsedDocument, ParsedLink, ParsedMetadata, ParsedText
 from dfsa.contracts.common import ErrorDetail
 
-from ._types import (
-    FetchedHTML, ParseError, ParseFailure, ParsedBlock, ParsedDocument,
-    ParsedLink, ParsedMetadata, ParsedText,
-)
+from ._types import FetchedHTML, ParseError, ParseFailure
 
 _CODECS = {"utf-8", "utf-8-sig", "ascii", "euc_kr", "cp949", "iso8859-1", "cp1252"}
 _VOID = set("area base br col embed hr img input link meta param source track wbr".split())

@@ -70,9 +70,10 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `src/dfsa/contracts/result.py`       | 최종 `DFSAResult`, stage, summary Contract              | 🔴       |
 | `src/dfsa/modules/`                  | 실제 Module Python 패키지 루트; 하위 담당 영역별 작업 위치 | 하위 정책 적용 |
 | `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
+| `src/dfsa/_documents.py` | Explorer와 B가 공유하는 내부 문서 자료형 | 🟡 |
 | `src/dfsa/modules/profiling/` | Module B 구현 — 서동균 | 🟡 |
-| `src/dfsa/modules/explorer/` | 예정: Page Explorer — 서동균 (B 담당자) | 🟡 |
-| `tests/modules/explorer/` | 예정: Explorer 테스트 — 서동균 | 🟡 |
+| `src/dfsa/modules/explorer/` | HTML Fetch, URL Policy, Parsing — 서동균 | 🟡 |
+| `tests/modules/explorer/` | Fetch, URL Policy, Parsing 회귀 테스트 — 서동균 | 🟡 |
 | `frontend/` | 예정: Web UI — 정유채, 기술·구현 상세 Owner 재량 | 🟡 |
 | `src/dfsa/modules/risk/`             | Module C 구현 위치 — 강영림 담당                         | 🟡       |
 | `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
@@ -104,7 +105,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | A/B/C | main에 v0.1 구현 존재; 후속 PR로 v0.2 전환 |
 | Orchestrator | v0.1 호출 제어 구현 존재 |
 | Offline E2E | PR #11 main Merge 완료; Live 성공 미확인 |
-| Explorer | 신규 예정, B 담당자가 기존 Fetch/Parsing 분리 및 개발 |
+| Explorer | v0.1 B에서 HTML Fetch, URL Policy, Parsing을 분리했고 B가 이를 사용한다. 별도 탐색 단계는 후속 PR에서 연결한다. |
 | Frontend / UI | 담당자가 신규 구현 및 기술 상세 수정 |
 | Evaluation | 별도 정량적 평가 제외; 기능·회귀·Live E2E 검증 유지 |
 
@@ -124,7 +125,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | Orchestrator | 서동균 | A → Explorer → B → C 호출 제어 및 시간/상태/결과 조합 |
 | 공통 Contract | 서동균 + 팀 Review | Public Contract 관리 및 변경 검토 |
 
-A/Explorer/B/C는 서로 직접 호출하지 않는다. C는 확인된 Exposure만 사용하며 Orchestrator는 분석 내용을 재생성하지 않는다. UI 담당자는 추천 기술 스택과 구현 상세를 수정할 수 있으나 공통 계약 변경은 팀 합의를 거친다.
+구조 분리 단계에서는 v0.1 호출 흐름을 유지하여 B가 Explorer의 문서 확보 기능을 사용한다. v0.2에서는 Orchestrator가 A/Explorer/B/C를 각각 호출한다. C는 확인된 Exposure만 사용하며 Orchestrator는 분석 내용을 재생성하지 않는다. UI 담당자는 추천 기술 스택과 구현 상세를 수정할 수 있으나 공통 계약 변경은 팀 합의를 거친다.
 
 ---
 

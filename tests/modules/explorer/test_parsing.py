@@ -4,11 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from dfsa.modules.profiling import parsing
-from dfsa.modules.profiling._types import (
-    FetchedHTML, ParseError, ParseFailure, ParsedDocument,
-)
-from dfsa.modules.profiling.fetch import fetch_html
+from dfsa._documents import ParsedDocument
+from dfsa.modules.explorer import parsing
+from dfsa.modules.explorer._types import FetchedHTML, ParseError, ParseFailure
+from dfsa.modules.explorer.fetch import fetch_html
 
 
 def fetched(html=b"", charset=None):
@@ -24,7 +23,7 @@ def parse(text, charset=None):
 
 @pytest.fixture
 def people():
-    body = (Path(__file__).parent / "fixtures/html/people.html").read_bytes()
+    body = (Path(__file__).parents[1] / "fixtures/html/people.html").read_bytes()
     result = parsing.parse_html(fetched(body))
     assert isinstance(result, ParsedDocument)
     return result

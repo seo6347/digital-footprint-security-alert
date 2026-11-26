@@ -12,11 +12,12 @@ import re
 from html import unescape
 from urllib.parse import urlsplit
 
+from dfsa._documents import ParsedDocument
 from dfsa.contracts.common import ExposureType, IdentityStatus
 
 from ._types import (
     EvidenceReference, ExposureCandidate, ExtractionDiagnostic, IdentityDecision,
-    ParsedDocument, ValidatedExposureCandidate,
+    ValidatedExposureCandidate,
 )
 from .identity import (
     _Document, _EMAIL, _HEADINGS, _NAME, _PAGE, _REGIONS, _chrome,
