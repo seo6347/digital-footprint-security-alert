@@ -42,17 +42,26 @@ class NavigationEntry(ContractModel):
         return value
 
 
+def has_technical_navigation_failure(history: list[NavigationEntry]) -> bool:
+    failure_statuses = {
+        NavigationStatus.FETCH_FAILED, NavigationStatus.PARSE_FAILED, NavigationStatus.UNSUPPORTED,
+    }
+    return any(entry.status in failure_statuses for entry in history)
+
+
 def validate_navigation(history: list[NavigationEntry], seeds: list[SearchResult]) -> None:
     unique_ids(history, "navigation_id")
-    seed_ids = {seed.source_id for seed in seeds}
+    seed_urls = {seed.source_id: seed.url for seed in seeds}
     paths = {(entry.source_id, entry.root_source_id, entry.depth) for entry in history}
     for entry in history:
-        if entry.root_source_id not in seed_ids:
+        if entry.root_source_id not in seed_urls:
             raise ValueError("Navigation root must reference a discovered source")
         if entry.depth == 0:
             if entry.parent_source_id is not None or entry.source_id != entry.root_source_id:
                 raise ValueError("Seed navigation must use its search source ID and have no parent")
-        elif (entry.source_id in seed_ids) != entry.source_id.startswith("src_"):
+            if entry.url != seed_urls[entry.root_source_id]:
+                raise ValueError("Seed navigation URL must match the discovered search URL")
+        elif (entry.source_id in seed_urls) != entry.source_id.startswith("src_"):
             raise ValueError("Navigation must reuse known search source IDs")
         elif (entry.parent_source_id, entry.root_source_id, entry.depth - 1) not in paths:
             raise ValueError("Navigation parent must appear on the same path at the preceding depth")
@@ -95,14 +104,11 @@ class ExplorationResult(RequestContract):
             raise ValueError("Attempted source IDs must reference non-skipped navigation")
         if not document_ids <= attempted_ids:
             raise ValueError("Acquired documents must reference attempted sources")
+        has_failures = bool(self.errors) or has_technical_navigation_failure(self.navigation_history)
         expected = ModuleStatus.SUCCESS
-        if self.documents and (self.errors or self.limit_reached or any(
-            entry.status in {NavigationStatus.FETCH_FAILED, NavigationStatus.PARSE_FAILED,
-                             NavigationStatus.UNSUPPORTED}
-            for entry in self.navigation_history
-        )):
+        if self.documents and (has_failures or self.limit_reached):
             expected = ModuleStatus.PARTIAL_SUCCESS
-        elif not self.documents and self.errors:
+        elif not self.documents and has_failures:
             expected = ModuleStatus.FAILED
         if self.status != expected:
             raise ValueError("Exploration status does not match its documents and failures")

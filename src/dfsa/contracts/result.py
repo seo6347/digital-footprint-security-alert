@@ -12,7 +12,9 @@ from .common import (
     ContractModel, ErrorDetail, IdentityStatus, ModuleStatus, RequestContract, StageStatus,
     Subject, unique_ids,
 )
-from .exploration import NavigationEntry, NavigationStatus, validate_navigation
+from .exploration import (
+    NavigationEntry, NavigationStatus, has_technical_navigation_failure, validate_navigation,
+)
 from .profiling import Exposure, Source, validate_exposure_references
 from .search import QueryExecution, SearchResult, validate_search_references
 
@@ -92,13 +94,42 @@ class DFSAResult(RequestContract):
                 raise ValueError("Source must match successful navigation")
         if self.status != self.stages.overall_status():
             raise ValueError("Overall status does not match stage statuses")
-        upstream = self.stages.search
-        if upstream == StageStatus.NOT_STARTED:
+        stages = self.stages
+        if stages.search == StageStatus.NOT_STARTED:
             raise ValueError("A pipeline result requires an executed search stage")
-        for stage in (self.stages.exploration, self.stages.profiling, self.stages.analysis):
-            if upstream in {StageStatus.NOT_STARTED, StageStatus.FAILED} and stage != StageStatus.NOT_STARTED:
-                raise ValueError("A stage cannot run after an upstream failure or skipped stage")
-            upstream = stage
+        runnable = {StageStatus.SUCCESS, StageStatus.PARTIAL_SUCCESS}
+        for upstream, downstream, has_input in (
+            (stages.search, stages.exploration, bool(self.discovered_sources)),
+            (stages.exploration, stages.profiling, bool(successful_sources)),
+            (stages.profiling, stages.analysis, bool(self.exposures)),
+        ):
+            should_run = upstream in runnable and has_input
+            if (downstream != StageStatus.NOT_STARTED) != should_run:
+                raise ValueError("Stage execution must match upstream status and available input")
+        if stages.search == StageStatus.FAILED and self.discovered_sources:
+            raise ValueError("Failed search cannot publish discovered sources")
+        if stages.search == StageStatus.PARTIAL_SUCCESS and not self.discovered_sources:
+            raise ValueError("Partial search requires discovered sources")
+        if stages.exploration not in runnable and successful_sources:
+            raise ValueError("Failed or skipped exploration cannot publish acquired pages")
+        if stages.exploration == StageStatus.NOT_STARTED and (self.navigation_history or self.exploration_limit_reached):
+            raise ValueError("Skipped exploration cannot publish navigation output")
+        if stages.exploration == StageStatus.PARTIAL_SUCCESS and not successful_sources:
+            raise ValueError("Partial exploration requires an acquired page")
+        if stages.exploration == StageStatus.SUCCESS and (
+            has_technical_navigation_failure(self.navigation_history)
+            or (successful_sources and self.exploration_limit_reached)
+        ):
+            raise ValueError("Successful exploration cannot contain technical failures or incomplete acquisition")
+        if stages.profiling not in runnable and self.exposures:
+            raise ValueError("Failed or skipped profiling cannot publish exposures")
+        if stages.profiling == StageStatus.NOT_STARTED and self.sources:
+            raise ValueError("Skipped profiling cannot publish sources")
+        if stages.analysis not in runnable and (
+            self.personal_profile is not None or self.relationship_graph.nodes
+            or self.phishing_risk_scenarios or self.security_recommendations
+        ):
+            raise ValueError("Failed or skipped analysis cannot publish analysis output")
         for stage in Stages.model_fields:
             duration = getattr(self.execution_time, f"{stage}_ms")
             not_started = getattr(self.stages, stage) == StageStatus.NOT_STARTED

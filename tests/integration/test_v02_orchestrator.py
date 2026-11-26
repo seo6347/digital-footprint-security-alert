@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from dfsa.contracts import (
-    AnalysisResponse, ErrorDetail, ExplorationResult, NavigationEntry, ProfilingResponse, StageStatus,
+    AnalysisResponse, ErrorDetail, ExplorationResult, NavigationEntry, ProfilingResponse, Source, StageStatus,
 )
 from dfsa.service import orchestrator, run_pipeline
 
@@ -71,6 +71,9 @@ def test_pipeline_ui_scenarios(case, status, stages, install, monkeypatch, v02_f
 ])
 def test_empty_or_failed_stages_stop_downstream(stage, status, install, v02_fixtures):
     def response(request):
+        if stage == "profiling" and status == "success":
+            completed = v02_fixtures["stage_responses"](request.request_id)[2]
+            return completed.model_copy(update={"exposures": []})
         model = ExplorationResult if stage == "exploration" else ProfilingResponse
         errors = [ErrorDetail(code="SYNTHETIC_FAILURE", message="Stage unavailable.", retryable=True)
                   ] if status == "failed" else []
@@ -144,6 +147,104 @@ def test_visited_pages_count_attempted_ids_once_with_policy_blocks(install, v02_
     assert len(result.navigation_history) == 4
     assert result.summary.visited_page_count == 2
     assert "attempted_source_ids" not in result.model_dump()
+
+
+@pytest.mark.parametrize("changes_seed", [True, False])
+def test_seed_url_provenance_preserves_valid_redirects(changes_seed, install, v02_fixtures):
+    final_url = "https://lab.example.org/redirected"
+    responses = v02_fixtures["stage_responses"]
+
+    def exploration(request):
+        response = responses(request.request_id)[1]
+        seed_url = final_url if changes_seed else request.search_results[0].url
+        entry = response.navigation_history[0].model_copy(update={"url": seed_url, "final_url": final_url})
+        document = replace(response.documents[0], original_url=seed_url, final_url=final_url)
+        return response.model_copy(update={"navigation_history": [entry], "documents": (document,)})
+
+    def profiling(request):
+        response = responses(request.request_id)[2]
+        source = response.sources[0].model_copy(update={"url": request.documents[0].final_url})
+        return response.model_copy(update={"sources": [source]})
+
+    calls = install(run_exploration=exploration, run_profiling=profiling)
+    if changes_seed:
+        with pytest.raises(ValueError, match="Seed navigation URL"):
+            run_pipeline(v02_fixtures["SUBJECT"])
+        assert calls[-1][0] == "run_exploration"
+    else:
+        result = run_pipeline(v02_fixtures["SUBJECT"])
+        assert result.status == "success"
+        assert result.navigation_history[0].url == result.discovered_sources[0].url
+        assert result.navigation_history[0].final_url == result.sources[0].url == final_url
+        assert result.summary.visited_page_count == 1
+
+
+@pytest.mark.parametrize("identity_status,processing_status", [
+    ("uncertain", "success"), ("rejected", "rejected"), ("confirmed", "success"),
+    (None, "success"),
+])
+def test_profiling_zero_exposures_requires_a_completed_decision(
+    identity_status, processing_status, install, v02_fixtures,
+):
+    def profiling(request):
+        document = request.documents[0]
+        source = Source(source_id=document.source_id, url=document.final_url,
+                        processing_status=processing_status, identity_status=identity_status)
+        return ProfilingResponse(schema_version="v0.2", request_id=request.request_id,
+                                 status="success", sources=[source])
+
+    install(run_profiling=profiling)
+    if identity_status is None:
+        with pytest.raises(ValueError, match="complete identity decisions"):
+            run_pipeline(v02_fixtures["SUBJECT"])
+    else:
+        result = run_pipeline(v02_fixtures["SUBJECT"])
+        assert result.status == "success"
+        assert result.stages.analysis == StageStatus.NOT_STARTED
+        assert result.sources[0].identity_status == identity_status
+        assert result.exposures == []
+
+
+@pytest.mark.parametrize("status,reported", [("success", False), ("partial_success", False), ("partial_success", True)])
+def test_profiling_cannot_silently_drop_an_acquired_document(status, reported, install, v02_fixtures):
+    responses = v02_fixtures["stage_responses"]
+    other_id = "nav_src_other"
+    other_url = "https://lab.example.org/other"
+
+    def exploration(request):
+        response = responses(request.request_id)[1]
+        entry = NavigationEntry(
+            navigation_id="nav_other", source_id=other_id, root_source_id="src_profile",
+            parent_source_id="src_profile", depth=1, status="success", url=other_url, final_url=other_url,
+        )
+        document = replace(response.documents[0], source_id=other_id, original_url=other_url, final_url=other_url)
+        return response.model_copy(update={
+            "navigation_history": [*response.navigation_history, entry],
+            "documents": (*response.documents, document),
+            "attempted_source_ids": (*response.attempted_source_ids, other_id),
+        })
+
+    def profiling(request):
+        if status == "success":
+            return ProfilingResponse(schema_version="v0.2", request_id=request.request_id, status=status)
+        response = responses(request.request_id)[2]
+        error = ErrorDetail(code="MOCK_FAILURE", message="Processing failed.",
+                            retryable=True, source_id=other_id if reported else None)
+        return response.model_copy(update={"status": status, "errors": [error]})
+
+    replacements = {"run_profiling": profiling}
+    if status == "partial_success":
+        replacements["run_exploration"] = exploration
+    calls = install(**replacements)
+    if not reported:
+        with pytest.raises(ValueError, match="omitted processing results"):
+            run_pipeline(v02_fixtures["SUBJECT"])
+        assert calls[-1][0] == "run_profiling"
+    else:
+        result = run_pipeline(v02_fixtures["SUBJECT"])
+        assert result.status == "partial_success"
+        assert result.stages.analysis == StageStatus.SUCCESS
+        assert result.errors[0].source_id == other_id
 
 
 @pytest.mark.parametrize("violation", ["request_id", "root", "attempt", "source", "analysis"])

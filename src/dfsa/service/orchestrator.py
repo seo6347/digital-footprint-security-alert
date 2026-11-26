@@ -74,6 +74,15 @@ def run_pipeline(subject: Subject) -> DFSAResult:
         for source in profiling.sources:
             if source_urls.get(source.source_id) != source.url:
                 raise ValueError("Profiling source must match the acquired document and final URL")
+        missing_ids = source_urls.keys() - {source.source_id for source in profiling.sources}
+        if profiling.status == ModuleStatus.PARTIAL_SUCCESS:
+            missing_ids.difference_update(error.source_id for error in profiling.errors)
+        if missing_ids and profiling.status != ModuleStatus.FAILED:
+            raise ValueError("Profiling response omitted processing results for acquired documents")
+        if profiling.status == ModuleStatus.SUCCESS and any(
+            source.identity_status is None for source in profiling.sources
+        ):
+            raise ValueError("Successful profiling must complete identity decisions for acquired documents")
 
     if profiling is not None and profiling.status != ModuleStatus.FAILED and profiling.exposures:
         analysis, analysis_ms = _call(

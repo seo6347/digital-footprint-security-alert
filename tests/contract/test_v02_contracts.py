@@ -111,3 +111,71 @@ def test_explorer_rejects_attempts_to_unrecorded_or_skipped_sources(v02_fixtures
             ExplorationResult.model_validate(candidate)
     with pytest.raises(ValidationError, match="Acquired documents must reference attempted sources"):
         ExplorationResult.model_validate(exploration.model_copy(update={"attempted_source_ids": ()}))
+
+
+@pytest.mark.parametrize("navigation_status", ["fetch_failed", "parse_failed", "unsupported"])
+def test_explorer_technical_failures_are_not_normal_zero(navigation_status, v02_fixtures):
+    exploration = v02_fixtures["stage_responses"]()[1]
+    seed = exploration.navigation_history[0]
+    failed_page = seed.model_copy(update={"status": navigation_status, "final_url": None})
+    failed = exploration.model_copy(update={"documents": (), "navigation_history": [failed_page]})
+    with pytest.raises(ValidationError, match="Exploration status"):
+        ExplorationResult.model_validate(failed)
+    assert ExplorationResult.model_validate(failed.model_copy(update={"status": "failed"})).errors == []
+
+    failed_child = NavigationEntry(
+        navigation_id="nav_failed_child", source_id="nav_src_failed", parent_source_id=seed.source_id,
+        root_source_id=seed.source_id, depth=1, url="https://lab.example.org/child",
+        status=navigation_status,
+    )
+    partial = exploration.model_copy(update={
+        "status": "partial_success",
+        "navigation_history": [seed, failed_child],
+        "attempted_source_ids": (seed.source_id, failed_child.source_id),
+    })
+    assert ExplorationResult.model_validate(partial).status == "partial_success"
+
+
+@pytest.mark.parametrize("navigation_status", ["blocked", "skipped"])
+def test_explorer_policy_exclusions_remain_normal_zero(navigation_status, v02_fixtures):
+    seed = v02_fixtures["stage_responses"]()[1].navigation_history[0]
+    result = ExplorationResult(
+        schema_version="v0.2", request_id="req_fixture", status="success",
+        navigation_history=[seed.model_copy(update={"status": navigation_status, "final_url": None})],
+    )
+    assert result.documents == ()
+    assert result.attempted_source_ids == ()
+
+
+@pytest.mark.parametrize("empty_stage", ["search", "exploration", "profiling"])
+def test_public_result_rejects_running_a_stage_without_input(empty_stage):
+    zero = json.loads((UI_FIXTURES / "zero.json").read_text(encoding="utf-8"))
+    success = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    if empty_stage in {"exploration", "profiling"}:
+        zero["discovered_sources"] = success["discovered_sources"]
+        zero["summary"]["search_result_count"] = 1
+    if empty_stage == "profiling":
+        zero["navigation_history"] = success["navigation_history"]
+        zero["sources"] = success["sources"]
+        zero["summary"]["visited_page_count"] = 1
+        zero["summary"]["confirmed_source_count"] = 1
+    zero["stages"] = success["stages"]
+    zero["execution_time"] = success["execution_time"]
+    with pytest.raises(ValidationError, match="Stage execution must match"):
+        DFSAResult.model_validate(zero)
+
+
+def test_public_result_rejects_technical_exploration_failure_as_success():
+    zero = json.loads((UI_FIXTURES / "zero.json").read_text(encoding="utf-8"))
+    success = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    zero["discovered_sources"] = success["discovered_sources"]
+    zero["summary"]["search_result_count"] = 1
+    zero["summary"]["visited_page_count"] = 1
+    zero["navigation_history"] = [success["navigation_history"][0] | {"status": "fetch_failed", "final_url": None}]
+    zero["stages"]["exploration"] = "success"
+    zero["execution_time"]["exploration_ms"] = 0
+    with pytest.raises(ValidationError, match="Successful exploration cannot contain technical failures"):
+        DFSAResult.model_validate(zero)
+
+    zero["status"] = zero["stages"]["exploration"] = "failed"
+    assert DFSAResult.model_validate(zero).stages.profiling == "not_started"
