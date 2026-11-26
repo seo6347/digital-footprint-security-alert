@@ -179,3 +179,121 @@ def test_public_result_rejects_technical_exploration_failure_as_success():
 
     zero["status"] = zero["stages"]["exploration"] = "failed"
     assert DFSAResult.model_validate(zero).stages.profiling == "not_started"
+
+
+@pytest.mark.parametrize("case", ["unrelated", "conflicting_final", "duplicate_link", "redirect_target", "known_alias"])
+def test_navigation_reuses_source_id_only_for_the_same_page(case):
+    data = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    seed = data["navigation_history"][0]
+    final_url = "https://lab.example.org/current"
+    seed["final_url"] = data["sources"][0]["url"] = final_url
+    duplicate = seed | {
+        "navigation_id": "nav_second_path", "parent_source_id": seed["source_id"], "depth": 1,
+        "status": "skipped", "final_url": None,
+    }
+    if case == "unrelated":
+        duplicate["url"] = "https://lab.example.org/other"
+        duplicate["final_url"] = final_url
+    elif case == "conflicting_final":
+        duplicate["final_url"] = "https://lab.example.org/other"
+    elif case == "duplicate_link":
+        duplicate["url"] += "#section"
+    elif case == "known_alias":
+        duplicate.update(url="https://lab.example.org/previous", status="success", final_url=final_url)
+    else:
+        duplicate["url"] = final_url
+    data["navigation_history"].append(duplicate)
+    if case in {"unrelated", "conflicting_final"}:
+        with pytest.raises(ValidationError, match="Navigation records for the same source"):
+            DFSAResult.model_validate(data)
+    else:
+        result = DFSAResult.model_validate(data)
+        assert len(result.navigation_history) == 2
+        assert result.summary.visited_page_count == 1
+
+
+@pytest.mark.parametrize("bad_url", [None, "", "/relative", "https://", "https://user@lab.example.org/profile"])
+def test_successful_navigation_requires_an_absolute_web_final_url(bad_url):
+    data = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    data["navigation_history"][0]["final_url"] = bad_url
+    data["sources"][0]["url"] = "https://lab.example.org/unrelated"
+    with pytest.raises(ValidationError, match="final URL"):
+        DFSAResult.model_validate(data)
+
+
+def test_public_source_url_must_match_the_successful_navigation_final_url():
+    data = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    data["navigation_history"][0]["final_url"] = "https://lab.example.org/current"
+    with pytest.raises(ValidationError, match="Source must match successful navigation"):
+        DFSAResult.model_validate(data)
+    data["sources"][0]["url"] = data["navigation_history"][0]["final_url"]
+    assert DFSAResult.model_validate(data).sources[0].url == "https://lab.example.org/current"
+
+
+@pytest.mark.parametrize("query_status,has_results,expected", [
+    ("failed", False, "failed"), ("failed", True, "partial_success"),
+    ("success", False, "success"), ("success", True, "success"),
+])
+def test_search_status_accounts_for_failed_queries_without_error_details(
+    query_status, has_results, expected, v02_fixtures,
+):
+    response = v02_fixtures["stage_responses"]()[0]
+    query = response.queries[0]
+    queries = [query.model_copy(update={"status": query_status})]
+    if query_status == "failed" and has_results:
+        queries = [query, query.model_copy(update={"query_id": "q_failed", "status": "failed"})]
+    response = response.model_copy(update={"queries": queries, "results": response.results if has_results else []})
+    if expected != "success":
+        with pytest.raises(ValidationError, match="Search status"):
+            SearchResponse.model_validate(response)
+    validated = SearchResponse.model_validate(response.model_copy(update={"status": expected}))
+    assert validated.status == expected
+    assert validated.errors == []
+
+
+def test_public_result_does_not_hide_failed_query_as_normal_zero():
+    data = json.loads((UI_FIXTURES / "zero.json").read_text(encoding="utf-8"))
+    data["search_history"][0]["status"] = "failed"
+    with pytest.raises(ValidationError, match="Successful search cannot contain failed queries"):
+        DFSAResult.model_validate(data)
+    data["status"] = data["stages"]["search"] = "failed"
+    assert DFSAResult.model_validate(data).stages.exploration == "not_started"
+
+
+@pytest.mark.parametrize("processing_status", ["parse_failed", "unsupported"])
+def test_request_attempts_distinguish_preflight_failure_from_acquired_response(processing_status, v02_fixtures):
+    fixture = v02_fixtures["stage_responses"]()[1]
+    seed = fixture.navigation_history[0]
+    for attempted_ids in ((), (seed.source_id,)):
+        failure = ExplorationResult(
+            schema_version="v0.2", request_id="req_fixture", status="failed",
+            navigation_history=[seed.model_copy(update={"status": "fetch_failed", "final_url": None})],
+            attempted_source_ids=attempted_ids,
+        )
+        assert failure.attempted_source_ids == attempted_ids
+    processing_failure = failure.model_copy(update={
+        "navigation_history": [seed.model_copy(update={"status": processing_status})],
+        "attempted_source_ids": (),
+    })
+    with pytest.raises(ValidationError, match="Navigation processing results must reference attempted sources"):
+        ExplorationResult.model_validate(processing_failure)
+    assert ExplorationResult.model_validate(processing_failure.model_copy(update={
+        "attempted_source_ids": (seed.source_id,),
+    })).status == "failed"
+
+
+def test_public_visited_count_cannot_omit_acquired_pages():
+    data = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    data["summary"]["visited_page_count"] = 0
+    with pytest.raises(ValidationError, match="Visited page count is below"):
+        DFSAResult.model_validate(data)
+
+
+@pytest.mark.parametrize("field", ["phishing_risk_scenarios", "security_recommendations"])
+def test_public_analysis_outputs_only_reference_discovered_exposure_types(field):
+    data = json.loads((UI_FIXTURES / "success.json").read_text(encoding="utf-8"))
+    data[field][0]["exposure_types"] = ["contact"]
+    with pytest.raises(ValidationError, match="undiscovered exposure type"):
+        DFSAResult.model_validate(data)
+    data[field][0]["exposure_types"] = [] if field == "security_recommendations" else ["affiliation"]
+    assert DFSAResult.model_validate(data).status == "success"

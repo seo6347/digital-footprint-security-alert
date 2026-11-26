@@ -57,6 +57,10 @@ def validate_search_references(queries: list[QueryExecution], results: list[Sear
             raise ValueError("Search result must reference a recorded query")
 
 
+def has_failed_search_query(queries: list[QueryExecution]) -> bool:
+    return any(query.status == QueryStatus.FAILED for query in queries)
+
+
 class SearchResponse(RequestContract):
     status: ModuleStatus
     searched_at: AwareDatetime
@@ -73,8 +77,8 @@ class SearchResponse(RequestContract):
     def validate_response(self) -> Self:
         validate_search_references(self.queries, self.results)
         expected = ModuleStatus.SUCCESS
-        if self.errors:
+        if self.errors or has_failed_search_query(self.queries):
             expected = ModuleStatus.PARTIAL_SUCCESS if self.results else ModuleStatus.FAILED
         if self.status != expected:
-            raise ValueError("Search status does not match its results and errors")
+            raise ValueError("Search status does not match its results and query failures")
         return self

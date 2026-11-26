@@ -90,7 +90,10 @@ def run_pipeline(subject: Subject) -> DFSAResult:
             AnalysisRequest(**scope, subject=subject, exposures=profiling.exposures),
             AnalysisResponse,
         )
-        validate_analysis_references(analysis.personal_profile, analysis.relationship_graph, profiling.exposures)
+        validate_analysis_references(
+            analysis.personal_profile, analysis.relationship_graph, profiling.exposures,
+            scenarios=analysis.phishing_risk_scenarios, recommendations=analysis.security_recommendations,
+        )
 
     stages = Stages(
         search=_stage(search), exploration=_stage(exploration),

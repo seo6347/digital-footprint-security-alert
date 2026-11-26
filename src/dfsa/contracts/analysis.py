@@ -112,7 +112,12 @@ class SecurityRecommendation(ContractModel):
 
 
 def validate_analysis_references(
-    profile: PersonalProfile | None, graph: RelationshipGraph, exposures: list[Exposure],
+    profile: PersonalProfile | None,
+    graph: RelationshipGraph,
+    exposures: list[Exposure],
+    *,
+    scenarios: list[PhishingRiskScenario],
+    recommendations: list[SecurityRecommendation],
 ) -> None:
     known_ids = {exposure.exposure_id for exposure in exposures}
     if profile is not None:
@@ -123,6 +128,13 @@ def validate_analysis_references(
     for item in (*graph.nodes, *graph.edges):
         if not set(item.exposure_ids) <= known_ids:
             raise ValueError("Graph references an unknown exposure")
+    known_types = {exposure.type for exposure in exposures}
+    for scenario in scenarios:
+        if not set(scenario.exposure_types) <= known_types:
+            raise ValueError("Phishing scenario references an undiscovered exposure type")
+    for recommendation in recommendations:
+        if not set(recommendation.exposure_types) <= known_types:
+            raise ValueError("Security recommendation references an undiscovered exposure type")
 
 
 class AnalysisRequest(RequestContract):

@@ -13,10 +13,11 @@ from .common import (
     Subject, unique_ids,
 )
 from .exploration import (
-    NavigationEntry, NavigationStatus, has_technical_navigation_failure, validate_navigation,
+    NavigationEntry, NavigationStatus, has_technical_navigation_failure, navigation_request_bounds,
+    validate_navigation,
 )
 from .profiling import Exposure, Source, validate_exposure_references
-from .search import QueryExecution, SearchResult, validate_search_references
+from .search import QueryExecution, SearchResult, has_failed_search_query, validate_search_references
 
 Milliseconds = Annotated[float, Field(ge=0, allow_inf_nan=False)]
 Count = Annotated[int, Field(ge=0)]
@@ -80,7 +81,10 @@ class DFSAResult(RequestContract):
         validate_search_references(self.search_history, self.discovered_sources)
         validate_navigation(self.navigation_history, self.discovered_sources)
         validate_exposure_references(self.sources, self.exposures)
-        validate_analysis_references(self.personal_profile, self.relationship_graph, self.exposures)
+        validate_analysis_references(
+            self.personal_profile, self.relationship_graph, self.exposures,
+            scenarios=self.phishing_risk_scenarios, recommendations=self.security_recommendations,
+        )
         unique_ids(self.phishing_risk_scenarios, "scenario_id")
         unique_ids(self.security_recommendations, "recommendation_id")
         successful_sources = {
@@ -88,9 +92,7 @@ class DFSAResult(RequestContract):
             if entry.status == NavigationStatus.SUCCESS
         }
         for source in self.sources:
-            if (source.source_id, source.url) not in successful_sources and (
-                source.source_id, None
-            ) not in successful_sources:
+            if (source.source_id, source.url) not in successful_sources:
                 raise ValueError("Source must match successful navigation")
         if self.status != self.stages.overall_status():
             raise ValueError("Overall status does not match stage statuses")
@@ -110,6 +112,8 @@ class DFSAResult(RequestContract):
             raise ValueError("Failed search cannot publish discovered sources")
         if stages.search == StageStatus.PARTIAL_SUCCESS and not self.discovered_sources:
             raise ValueError("Partial search requires discovered sources")
+        if stages.search == StageStatus.SUCCESS and has_failed_search_query(self.search_history):
+            raise ValueError("Successful search cannot contain failed queries")
         if stages.exploration not in runnable and successful_sources:
             raise ValueError("Failed or skipped exploration cannot publish acquired pages")
         if stages.exploration == StageStatus.NOT_STARTED and (self.navigation_history or self.exploration_limit_reached):
@@ -150,9 +154,9 @@ class DFSAResult(RequestContract):
         }
         if any(getattr(self.summary, field) != count for field, count in counts.items()):
             raise ValueError("Summary counts do not match result collections")
-        eligible_visits = {
-            item.source_id for item in self.navigation_history if item.status != NavigationStatus.SKIPPED
-        }
+        required_visits, eligible_visits = navigation_request_bounds(self.navigation_history)
+        if self.summary.visited_page_count < len(required_visits):
+            raise ValueError("Visited page count is below the number of known page requests")
         if self.summary.visited_page_count > len(eligible_visits):
             raise ValueError("Visited page count exceeds unique navigation sources")
         return self

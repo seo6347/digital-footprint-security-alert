@@ -304,3 +304,42 @@ def test_downstream_mutation_does_not_change_published_upstream_result(install, 
 def test_unconnected_pipeline_raises_explicitly(v02_fixtures):
     with pytest.raises(RuntimeError, match="No v0.2 module connected for SearchRequest"):
         run_pipeline(v02_fixtures["SUBJECT"])
+
+
+@pytest.mark.parametrize("attempted", [False, True])
+def test_fetch_failure_counts_only_explicit_http_attempts(attempted, install, v02_fixtures):
+    def exploration(request):
+        seed = v02_fixtures["stage_responses"](request.request_id)[1].navigation_history[0]
+        entry = seed.model_copy(update={"status": "fetch_failed", "final_url": None})
+        return ExplorationResult(
+            schema_version="v0.2", request_id=request.request_id, status="failed",
+            navigation_history=[entry], attempted_source_ids=(seed.source_id,) if attempted else (),
+        )
+
+    calls = install(run_exploration=exploration)
+    result = run_pipeline(v02_fixtures["SUBJECT"])
+    assert [name for name, _ in calls] == ["run_search", "run_exploration"]
+    assert result.status == "failed"
+    assert result.summary.visited_page_count == int(attempted)
+
+
+@pytest.mark.parametrize("field,types", [
+    ("phishing_risk_scenarios", ["affiliation", "contact"]),
+    ("security_recommendations", ["contact"]),
+    ("security_recommendations", []),
+])
+def test_analysis_exposure_types_are_validated_against_the_profiling_output(
+    field, types, install, v02_fixtures,
+):
+    def analysis(request):
+        response = v02_fixtures["stage_responses"](request.request_id)[3]
+        item = getattr(response, field)[0].model_copy(update={"exposure_types": types})
+        return response.model_copy(update={field: [item]})
+
+    install(run_analysis=analysis)
+    if types:
+        with pytest.raises(ValueError, match="undiscovered exposure type"):
+            run_pipeline(v02_fixtures["SUBJECT"])
+    else:
+        result = run_pipeline(v02_fixtures["SUBJECT"])
+        assert result.security_recommendations[0].exposure_types == []
