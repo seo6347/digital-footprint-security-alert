@@ -2,8 +2,8 @@ import socket
 
 import pytest
 
-from dfsa.modules.profiling._types import FetchError, FetchProblem
-from dfsa.modules.profiling.url_policy import validate_url
+from dfsa.modules.explorer._types import FetchError, FetchProblem
+from dfsa.modules.explorer.url_policy import validate_url
 
 
 @pytest.mark.parametrize("url, expected", [

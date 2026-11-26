@@ -23,9 +23,10 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from dfsa.contracts import Subject
-from dfsa.modules.profiling import fetch, run_profiling
-from dfsa.modules.profiling._types import FetchError, FetchProblem
-from dfsa.modules.profiling.url_policy import validate_url
+from dfsa.modules.explorer import fetch
+from dfsa.modules.explorer._types import FetchError, FetchProblem
+from dfsa.modules.explorer.url_policy import validate_url
+from dfsa.modules.profiling import run_profiling
 from dfsa.modules.risk.engine import run_risk
 from dfsa.modules.search import provider, run_search
 from dfsa.service import orchestrator
