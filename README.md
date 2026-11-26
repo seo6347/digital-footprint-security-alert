@@ -6,15 +6,20 @@ DFSA는 사용자의 공개된 디지털 발자국을 모으고 구조화하여,
 
 ## 현재 개발 상태
 
-| 영역 | 현재 상태 |
-| --- | --- |
-| 공통 Contract | Pydantic v2 모델과 validation 테스트 준비 완료 |
-| DFSA Orchestrator | 호출 흐름·결과 조합 구현 및 Mock Integration Test 완료 |
-| Module A / B / C | 구현·테스트 폴더 준비 완료, 실제 기능 구현 예정 |
-| Module별 / E2E Evaluation | 폴더와 안내 문서 준비 완료, Dataset·Metric·절차 미확정 |
-| Frontend / UI | 구현 예정 |
+v0.1 A/B/C 및 Orchestrator 구현과 Offline E2E가 main에 반영되었다(PR #11). 실제 검색부터 공개 정보 확인까지의 Live E2E 성공은 아직 확인되지 않았다.
 
-현재는 Module 병렬 개발을 시작하기 위한 공통 기반이 준비된 상태입니다. 실제 검색 API, HTML 수집·분석, Risk Rule Engine을 연결한 완성 서비스는 아직 제공하지 않습니다.
+v0.2는 팀 Review 대상인 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기준으로 다음 기능을 개발한다. 이 문서 변경만으로 v0.2 기능이 구현된 것은 아니다.
+
+| 영역 | v0.2 개발 방향 |
+| --- | --- |
+| Search | 이름+학교 기반 실제 SerpApi 검색, 이메일 선택 |
+| Page Explorer | 승인된 연구실 내 제한적 다중 페이지 탐색 |
+| Profiling | Rule + 학교 제공 LLM API, 원문 근거 검증 |
+| Analysis | Profile, Relationship Graph, 교육용 사칭 위험 사례, 대응 방안 |
+| Orchestrator | 검색·탐색 이력, 단계별 실제 시간, DFSAResult |
+| Web UI | 담당자 주도 구현, React + TypeScript + FastAPI 초기 추천 |
+
+본인 또는 동의한 대상의 승인된 로컬 시연을 목표로 하며, 실제 피싱 메시지 생성·발송 및 무관한 제3자 개인정보 수집은 제외한다. v0.2에서는 필요에 따라 외부 라이브러리를 활용하고 별도 정량적 Evaluation은 요구하지 않는다.
 
 ## Repository 구조
 
@@ -26,12 +31,13 @@ DFSA/
 ├── requirements.txt
 ├── pytest.ini
 ├── docs/
-│   └── team-development-spec-v0.1.md
+│   ├── team-development-spec-v0.1.md  # 기존 구현/이력
+│   └── team-development-spec-v0.2.md  # 신규 개발 명세
 ├── src/dfsa/
 │   ├── contracts/                   # 공통 Pydantic Contract
 │   ├── service/
 │   │   └── orchestrator.py          # Pipeline 실행·결과 조합
-│   └── modules/                     # 실제 구현 예정 위치
+│   └── modules/                     # v0.1 구현 위치
 │       ├── search/                  # Module A
 │       ├── profiling/               # Module B
 │       └── risk/                    # Module C
@@ -39,7 +45,7 @@ DFSA/
 │   ├── contract/
 │   ├── integration/
 │   ├── fixtures/
-│   └── modules/                     # Module별 테스트 추가 예정
+│   └── modules/                     # Module별 테스트
 │       ├── search/
 │       ├── profiling/
 │       └── risk/
@@ -51,7 +57,7 @@ DFSA/
     └── e2e/
 ```
 
-Module 패키지는 현재 빈 `__init__.py`만 포함합니다. Module 테스트와 Evaluation의 빈 디렉터리는 `.gitkeep`으로 유지합니다.
+위 구조는 현재 v0.1 실행 코드 기준이며 Explorer, Analysis Contract 및 UI는 후속 PR에서 추가/변경한다.
 
 ## 개발 환경 및 설치
 
@@ -82,9 +88,9 @@ python -m pytest tests/contract
 python -m pytest tests/integration
 ```
 
-기존 Integration Test는 실제 외부 API 대신 Contract-valid Mock을 사용합니다. `pytest.ini`가 테스트 실행 시 `src`를 import 경로에 추가합니다. Module 테스트와 품질 평가 코드는 아직 없습니다. pytest 통과와 Evaluation 완료는 구분합니다.
+기존 Integration Test는 실제 외부 API 대신 Contract-valid Mock을 사용합니다. `pytest.ini`가 테스트 실행 시 `src`를 import 경로에 추가합니다. Module 및 Offline E2E 테스트도 존재한다. v0.2에서는 별도 정량적 Evaluation을 요구하지 않는다.
 
-## Orchestrator 사용 및 Module 연결
+## Orchestrator 사용 및 Module 연결 (현재 v0.1 코드 기준)
 
 Public entry point는 [src/dfsa/service/orchestrator.py](src/dfsa/service/orchestrator.py)에 있으며, 패키지에서도 import할 수 있습니다.
 
@@ -111,7 +117,7 @@ from dfsa.service import run_pipeline
 | B | `run_profiling(ProfilingRequest) -> ProfilingResponse` | `src/dfsa/modules/profiling/` |
 | C | `run_risk(RiskRequest) -> RiskResponse` | `src/dfsa/modules/risk/` |
 
-아래는 함수 구현 후의 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 담당자의 구현에서 가져올 함수이며, 현재 패키지에는 아직 정의되어 있지 않습니다.
+아래는 현재 v0.1 함수 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 모듈에서 가져올 수 있습니다. v0.2에서는 후속 Contract PR을 통해 Explorer와 run_analysis를 추가/교체합니다.
 
 ```python
 from dfsa.contracts import Subject
@@ -137,8 +143,9 @@ result = orchestrator.run_pipeline(subject)
 | 문서 | 역할 |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Repository Map, Ownership, 작업 절차와 수정 정책 |
-| [팀 개발 명세서](docs/team-development-spec-v0.1.md) | v0.1 Architecture·Public Contract·Pipeline 정책의 단일 상세 Source of Truth |
-| [Evaluation 안내](evaluation/README.md) | Module별·E2E 평가 위치, 담당, 미결 기준과 데이터 관리 |
+| [v0.2 팀 개발 명세서](docs/team-development-spec-v0.2.md) | 신규 MVP Architecture·Contract·개발 정책 (팀 Review 후 적용) |
+| [v0.1 팀 개발 명세서](docs/team-development-spec-v0.1.md) | 기존 구현 및 구조 분리 단계의 계약, 개발 이력 |
+| [Evaluation 안내](evaluation/README.md) | v0.1 평가 준비 이력; v0.2는 기능 검증 및 Live E2E 중심 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 팀원 계정·이름 정보 |
 
 상세 Schema·Enum·Risk Rule·상태 정책과 팀 미결 사항은 기술 명세서를 확인합니다. 작업 위치와 수정 범위는 AGENTS.md를, 품질 평가 준비는 Evaluation 안내를 참조하세요.
