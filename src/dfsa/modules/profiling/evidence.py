@@ -13,7 +13,7 @@ from html import unescape
 from urllib.parse import urlsplit
 
 from dfsa._documents import ParsedDocument
-from dfsa.contracts.common import ExposureType, IdentityStatus
+from dfsa._v01.contracts.common import ExposureType, IdentityStatus
 
 from ._types import (
     EvidenceReference, ExposureCandidate, ExtractionDiagnostic, IdentityDecision,

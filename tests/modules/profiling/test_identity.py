@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from dfsa._documents import ParsedDocument
-from dfsa.contracts.common import IdentityStatus, Subject
+from dfsa._v01.contracts.common import IdentityStatus, Subject
 from dfsa.modules.explorer._types import FetchedHTML
 from dfsa.modules.explorer.parsing import parse_html
 from dfsa.modules.profiling._types import IdentityDecision

@@ -2,7 +2,7 @@
 
 - Project: Digital Footprint Security Alert (DFSA)
 - Document version: v0.2
-- Status: 팀 Review 및 Contract Freeze 대상 (본 PR은 문서 변경만 포함)
+- Status: 팀 Review 및 Contract Freeze 대상
 - Implementation baseline: main `285e55865b81e97243a03afdf5a6d3fd42d023c0`
 - 기존 v0.1 명세: [team-development-spec-v0.1.md](team-development-spec-v0.1.md)
 
@@ -150,6 +150,9 @@ ExplorationResult (typed internal envelope):
 - navigation_history: list[NavigationEntry] (기본 [])
 - errors: list[ErrorDetail] (기본 [])
 - limit_reached: bool, 기본 false
+- attempted_source_ids: tuple[str, ...] (기본 empty, 실제 페이지 요청을 시도한 source_id, 내부 전용)
+
+시도 ID는 같은 결과의 navigation_history에 속해야 하며, 해당 ID에 `skipped` 이외의 기록이 하나 이상 있어야 한다. 확보한 문서의 source_id는 시도 ID에 포함한다. 동일 source_id는 한 페이지로 집계한다. 요청 전 차단은 ID를 남기지 않고, 실제 요청 뒤 redirect가 차단되면 시작 페이지 ID를 남긴다. redirect hop은 별도 페이지로 세지 않는다.
 
 승인된 후보가 없으면 정상 0건 또는 정책상 차단 상태로 구분한다. 실제 확보된 문서가 있고 일부 처리 실패/한도에 의한 미완료가 있으면 partial_success. 오류가 있고 문서가 없으면 failed. 단순 정책상 무관한 링크의 제외만으로 실패를 만들지 않는다. 이력을 UI에서 완전한 사이트 수집으로 오해하지 않게 한다.
 
@@ -295,7 +298,7 @@ v0.1의 외부 라이브러리 최소 사용 방침을 v0.2에서 완화한다. 
 
 ## 12. Repository 변경 및 개발 순서
 
-예정 경로 (본 PR에서는 생성하지 않음):
+v0.2 계약과 모듈 경로:
 ```text
 src/dfsa/
   contracts/        common.py, search.py, exploration.py, profiling.py, analysis.py, result.py
@@ -305,7 +308,7 @@ src/dfsa/
     profiling/
     risk/           # C 담당자가 내부 이름/구조 조정 가능
   service/         orchestrator.py
-  # 공유 내부 문서 타입: Refactoring PR에서 경로 확정
+  _documents.py    # Explorer와 B의 공유 내부 문서 타입
 tests/
   contract/
   integration/

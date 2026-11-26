@@ -11,8 +11,8 @@ import unicodedata
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 
-from dfsa.contracts.common import Subject
-from dfsa.contracts.search import Relevance
+from dfsa._v01.contracts.common import Subject
+from dfsa._v01.contracts.search import Relevance
 
 
 def _normalize_text(value: str) -> str:

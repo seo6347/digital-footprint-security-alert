@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts.common import (
+from dfsa._v01.contracts.common import (
     ErrorDetail,
     EvaluationValue,
     ExposureType,

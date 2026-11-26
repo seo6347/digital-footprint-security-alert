@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts import DFSAResult, RiskResponse
-from dfsa.contracts.risk import RiskPath
+from dfsa._v01.contracts import DFSAResult, RiskResponse
+from dfsa._v01.contracts.risk import RiskPath
 
 
 @pytest.mark.parametrize("status", ["candidate", "supported"])

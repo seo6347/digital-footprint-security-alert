@@ -8,8 +8,8 @@ from urllib.error import URLError
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts import DFSAResult, Subject
-from dfsa.service import orchestrator
+from dfsa._v01.contracts import DFSAResult, Subject
+from dfsa._v01 import orchestrator
 
 
 EVALUATION_FIELDS = {"searchability", "cross_source_linkability", "attack_utility",

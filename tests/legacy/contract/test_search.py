@@ -3,8 +3,8 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts.common import ErrorDetail
-from dfsa.contracts.search import QueryExecution, SearchOptions, SearchRequest, SearchResponse
+from dfsa._v01.contracts.common import ErrorDetail
+from dfsa._v01.contracts.search import QueryExecution, SearchOptions, SearchRequest, SearchResponse
 
 
 def test_search_request_defaults(subject_data):

@@ -8,7 +8,7 @@ from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts import (
+from dfsa._v01.contracts import (
     DFSAResult,
     ProfilingRequest,
     ProfilingResponse,
@@ -18,7 +18,8 @@ from dfsa.contracts import (
     SearchResponse,
     Subject,
 )
-from dfsa.service import orchestrator, run_pipeline
+from dfsa._v01 import orchestrator
+from dfsa._v01.orchestrator import run_pipeline
 
 
 @pytest.fixture

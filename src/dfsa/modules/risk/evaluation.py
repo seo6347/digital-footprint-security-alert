@@ -1,9 +1,9 @@
 
 """Rule-based risk evaluation for DFSA v0.1."""
 
-from dfsa.contracts.common import EvaluationValue, ExposureType
-from dfsa.contracts.profiling import Exposure
-from dfsa.contracts.risk import RiskEvaluation
+from dfsa._v01.contracts.common import EvaluationValue, ExposureType
+from dfsa._v01.contracts.profiling import Exposure
+from dfsa._v01.contracts.risk import RiskEvaluation
 
 from .rules import RuleMatch
 

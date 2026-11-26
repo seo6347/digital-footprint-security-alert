@@ -2,8 +2,8 @@
 
 import pytest
 
-from dfsa.contracts.common import Subject
-from dfsa.contracts.search import Relevance
+from dfsa._v01.contracts.common import Subject
+from dfsa._v01.contracts.search import Relevance
 from dfsa.modules.search.relevance import assess_relevance
 
 

@@ -6,11 +6,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from dfsa.contracts import DFSAResult, ProfilingRequest, RiskRequest, RiskResponse, SearchResponse
-from dfsa.contracts.common import ErrorDetail, IdentityStatus, ModuleStatus
-from dfsa.modules.profiling import run_profiling
+from dfsa._v01.contracts import DFSAResult, ProfilingRequest, RiskRequest, RiskResponse, SearchResponse
+from dfsa._v01.contracts.common import ErrorDetail, IdentityStatus, ModuleStatus
+from dfsa.modules.profiling.pipeline import run_profiling
 from dfsa.modules.profiling import identity
-from dfsa.service import orchestrator
+from dfsa._v01 import orchestrator
 
 
 @pytest.fixture

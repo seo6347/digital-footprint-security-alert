@@ -21,10 +21,10 @@ RiskPath의 기존 `evaluation` 다섯 필드는 Public Contract에 따라 검�
 
 | 단계 | 실제 함수 |
 | --- | --- |
-| A | `dfsa.modules.search.run_search` (`runner.py`) |
-| B | `dfsa.modules.profiling.run_profiling` (`pipeline.py`) |
+| A | `dfsa.modules.search.runner.run_search` |
+| B | `dfsa.modules.profiling.pipeline.run_profiling` |
 | C | `dfsa.modules.risk.engine.run_risk` |
-| Service | `dfsa.service.orchestrator.run_pipeline` |
+| Service | `dfsa._v01.orchestrator.run_pipeline` |
 
 호출 관찰은 일시적인 `sys.setprofile` callback으로 수행한다. 실제 함수의 입력과 반환값을
 deep copy로 기록하며, 기존 profiler도 종료 시 복구한다. 모듈 응답을 만들어 주입하지 않는다.

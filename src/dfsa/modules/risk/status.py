@@ -1,8 +1,8 @@
 
 """Conservative rule-based risk path status for DFSA v0.1."""
 
-from dfsa.contracts.common import ExposureType, RiskPathStatus
-from dfsa.contracts.profiling import Exposure
+from dfsa._v01.contracts.common import ExposureType, RiskPathStatus
+from dfsa._v01.contracts.profiling import Exposure
 
 from .rules import RuleMatch
 

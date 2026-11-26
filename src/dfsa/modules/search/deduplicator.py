@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from dfsa.contracts.search import DiscoveredBy
+from dfsa._v01.contracts.search import DiscoveredBy
 from dfsa.modules.search.normalizer import normalize_url
 from dfsa.modules.search.provider import ProviderResult
 

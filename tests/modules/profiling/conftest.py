@@ -2,7 +2,7 @@ import socket
 
 import pytest
 
-from dfsa.contracts.search import SearchResult
+from dfsa._v01.contracts.search import SearchResult
 
 
 @pytest.fixture(autouse=True)
@@ -12,7 +12,7 @@ def no_real_network(deny_unit_network):
 
 @pytest.fixture
 def phase4_subject():
-    from dfsa.contracts.common import Subject
+    from dfsa._v01.contracts.common import Subject
 
     return Subject(name="Alice Kim", organization="Example University", email="alice@example.com")
 
@@ -43,7 +43,7 @@ def phase4_card():
 
 @pytest.fixture
 def phase6_request(phase4_subject):
-    from dfsa.contracts.profiling import ProfilingRequest
+    from dfsa._v01.contracts.profiling import ProfilingRequest
 
     def build(source_ids=("src_001",), *, subject=None, request_id="req_phase6"):
         return ProfilingRequest(
