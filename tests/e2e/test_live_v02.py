@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import socket
+from dataclasses import replace
 from email.message import Message
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
@@ -13,6 +14,7 @@ import pytest
 
 import live_v02
 import live_v02_transport
+from dfsa._documents import ParsedLink
 from dfsa.contracts import ErrorDetail
 from dfsa.service import orchestrator
 
@@ -82,6 +84,7 @@ def test_selected_prefix_passes_real_outputs_through_orchestrator(until, configu
         assert report["stages"][stage]["status"] == "success"
         assert report["stages"][stage]["elapsed_ms"] >= 0
         assert report["stages"][stage]["output"]
+        assert "details" not in report["stages"][stage]
     for stage in live_v02.STAGES[len(expected):]:
         assert report["stages"][stage] == {"status": "out_of_scope", "elapsed_ms": None}
 
@@ -333,7 +336,12 @@ def test_terminal_details_show_actual_content_except_credentials_and_raw_html(
     def exploration(request):
         response = v02_fixtures["stage_responses"](request.request_id)[1]
         nav = response.navigation_history[0].model_copy(update={"reason": raw_html})
-        return response.model_copy(update={"navigation_history": [nav]})
+        document = replace(
+            response.documents[0],
+            title="Research group synthetic+private-key",
+            links=(ParsedLink(0, "/people/not-displayed", "Link text", "link text", (), ()),),
+        )
+        return response.model_copy(update={"navigation_history": [nav], "documents": (document,)})
 
     def profiling(request):
         response = v02_fixtures["stage_responses"](request.request_id)[2]
@@ -348,12 +356,22 @@ def test_terminal_details_show_actual_content_except_credentials_and_raw_html(
     assert stages["search"]["details"]["queries"][0]["text"] == "Sample Researcher Example University"
     assert "view=public" in stages["search"]["details"]["results"][1]["url"]
     assert stages["exploration"]["details"]["navigation_history"][0]["reason"] == "[HTML omitted]"
+    document = v02_fixtures["stage_responses"]()[1].documents[0]
+    assert stages["exploration"]["details"]["document_summaries"] == [{
+        "source_id": document.source_id,
+        "original_url": document.original_url,
+        "final_url": document.final_url,
+        "title": "Research group [REDACTED]",
+        "encoding": document.encoding,
+        "text_count": len(document.texts),
+        "link_count": 1,
+    }]
     assert stages["profiling"]["details"]["exposures"][0]["sources"][0]["evidence"] == evidence
     assert stages["analysis"]["details"]["relationship_graph"]["edges"]
     rendered = json.dumps(report)
     assert all(value not in rendered for value in (
         "synthetic+private-key", "synthetic%2Bprivate-key", "user:credential", "other-secret",
-        raw_html, '"html_text"', '"documents": [',
+        raw_html, '"html_text"', '"documents": [', "/people/not-displayed",
     ))
 
 

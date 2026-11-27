@@ -281,6 +281,19 @@ def _run(subject, until, transport, *, details=False):
             reports[stage] = _report_completed(stage, response, elapsed)
             if details:
                 payload = response.model_dump(mode="json", include=_DETAIL_FIELDS[stage])
+                if stage == "exploration":
+                    payload["document_summaries"] = [
+                        {
+                            "source_id": document.source_id,
+                            "original_url": document.original_url,
+                            "final_url": document.final_url,
+                            "title": document.title,
+                            "encoding": document.encoding,
+                            "text_count": len(document.texts),
+                            "link_count": len(document.links),
+                        }
+                        for document in response.documents
+                    ]
                 reports[stage]["details"] = _redact_details(payload, secrets, original_html)
             if response.errors or response.status.value != "success":
                 exit_code = exit_code or 1

@@ -155,6 +155,8 @@ python tests/e2e/live_v02.py --until exploration --details --live --consent-conf
 
 기본 JSON은 단계별 상태·시간·건수·분류 및 안전한 오류 코드만 보여줍니다. 실제 내용을 보려면 로컬 터미널에서 `--details`를 지정합니다. 검색어·URL, 탐색 이력, Exposure·Evidence와 C의 분석 결과에 동의 대상의 정보가 포함될 수 있습니다. 상세 출력은 터미널에서만 제공하며 API 키와 URL 자격 증명을 가리고 원문 HTML은 제외합니다. 예외는 발생 단계, 진단 코드, 검증 오류 유형이나 HTTP 상태만 표시합니다.
 
+Explorer 상세 출력의 `document_summaries`에는 확보한 문서별 `source_id`, `original_url`, `final_url`, 제목, 인코딩과 파싱된 텍스트·링크 개수가 표시됩니다.
+
 종료 코드는 정상 실행 또는 정상 0건 0, 실행·정책 오류나 부분 성공 1, 승인·설정 오류 또는 미연결 2입니다.
 
 실제 네트워크를 사용하지 않는 실행기 회귀 검증은 `python -m pytest tests/e2e/test_live_v02.py`로 실행합니다.
