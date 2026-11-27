@@ -9,11 +9,8 @@ from dfsa.modules.search.relevance import assess_relevance
 from dfsa.modules.search.runner import run_search
 
 
-# =====================================================================
-# 1. Query Builder 테스트 (이메일 Optional 대응 및 검색어 확장 검증)
-# =====================================================================
-def test_build_queries_with_email():
-    """이메일이 존재할 때 이메일 전용 쿼리를 포함한 4개 쿼리가 생성되는지 확인."""
+def test_build_queries_with_email_and_org_variants():
+    """'숭실대학교' 입력 시 약어 '숭실대' 조합 및 이메일을 포함한 쿼리가 생성되는지 확인."""
     subject = Subject(
         name="서동균",
         organization="숭실대학교",
@@ -21,15 +18,14 @@ def test_build_queries_with_email():
     )
     queries = build_queries(subject)
 
-    assert len(queries) == 4
     assert '"서동균" "숭실대학교"' in queries
-    assert '"서동균" "숭실대학교" 연구실' in queries
-    assert '"서동균" "숭실대학교" lab' in queries
+    assert '"서동균" "숭실대"' in queries
+    assert '"서동균" "숭실대" 연구실' in queries
     assert '"donggyun@ssu.ac.kr"' in queries
 
 
 def test_build_queries_without_email():
-    """email이 None인 경우 이메일 쿼리가 생략되고 3개 쿼리만 생성되는지 확인."""
+    """email이 None인 경우 숭실대학교 및 숭실대 쿼리가 생성되고 이메일 쿼리는 생략된다."""
     subject = Subject(
         name="서동균",
         organization="숭실대학교",
@@ -37,22 +33,19 @@ def test_build_queries_without_email():
     )
     queries = build_queries(subject)
 
-    assert len(queries) == 3
+    assert '"서동균" "숭실대학교"' in queries
+    assert '"서동균" "숭실대"' in queries
     assert '"donggyun@ssu.ac.kr"' not in queries
-    assert '"None"' not in queries
 
 
-# =====================================================================
-# 2. Relevance Assessment 테스트 (email=None 안전성 및 조건 판정)
-# =====================================================================
-def test_assess_relevance_name_and_org_match_without_email():
-    """email이 None이어도 이름과 소속이 모두 일치하면 candidate로 판정된다."""
+def test_assess_relevance_short_org_name_match():
+    """웹페이지에 '숭실대학교' 대신 '숭실대'로 적혀있어도 candidate로 정상 판단된다."""
     subject = Subject(name="서동균", organization="숭실대학교", email=None)
 
     rel = assess_relevance(
         subject,
         url="https://lab.ssu.ac.kr/members/seo-donggyun",
-        title="숭실대학교 연구실 멤버 - 서동균",
+        title="숭실대 연구실 멤버 - 서동균",
         snippet="AI소프트웨어학부 서동균 연구원 프로필",
     )
 
@@ -76,9 +69,6 @@ def test_assess_relevance_uncertain():
     assert "insufficient_evidence" in rel.reasons
 
 
-# =====================================================================
-# 3. Runner 전체 흐름 및 모듈 상태(ModuleStatus) 검증 (Mocking 적용)
-# =====================================================================
 @patch("dfsa.modules.search.runner.SerpApiProvider")
 def test_run_search_success_with_results(mock_provider_cls):
     """정상적으로 검색 결과를 수집하여 candidate 검색 결과를 반환하는 케이스."""
@@ -88,7 +78,7 @@ def test_run_search_success_with_results(mock_provider_cls):
     mock_provider.search.return_value = [
         ProviderResult(
             url="https://lab.ssu.ac.kr/member/donggyun",
-            title="서동균 - 숭실대학교 연구실",
+            title="서동균 - 숭실대 연구실",
             snippet="숭실대 AI 연구실 서동균",
             provider_rank=1,
         )

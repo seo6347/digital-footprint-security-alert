@@ -1,8 +1,4 @@
-"""Assess preliminary relevance using search-result metadata.
-
-A candidate result does not confirm identity.
-Final identity verification belongs to Module B.
-"""
+"""Assess preliminary relevance using search-result metadata."""
 
 from __future__ import annotations
 
@@ -57,6 +53,17 @@ def _contains_exact_email(text: str, email: str | None) -> bool:
     return re.search(pattern, normalized_text) is not None
 
 
+def _get_org_variants(org: str) -> list[str]:
+    """'숭실대학교' -> ['숭실대학교', '숭실대'] 약어 변환 지원."""
+    cleaned = org.strip()
+    variants = [cleaned]
+    if cleaned.endswith("대학교"):
+        variants.append(cleaned[:-3] + "대")
+    elif cleaned.endswith("대학"):
+        variants.append(cleaned[:-2] + "대")
+    return list(dict.fromkeys(variants))
+
+
 def assess_relevance(
     subject: Subject,
     *,
@@ -85,9 +92,11 @@ def assess_relevance(
         for field in fields
     )
 
+    org_variants = _get_org_variants(subject.organization)
     organization_match = any(
-        _contains_term(field, subject.organization)
+        _contains_term(field, org_var)
         for field in fields
+        for org_var in org_variants
     )
 
     email_exact_match = False
