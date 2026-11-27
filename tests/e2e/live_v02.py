@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from collections import Counter
 from contextlib import redirect_stderr, redirect_stdout
@@ -11,15 +12,19 @@ from importlib import import_module
 from pathlib import Path
 from time import perf_counter
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, quote_plus, unquote_plus
+
+from pydantic import ValidationError
 
 if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from dfsa.contracts import ExplorationResult, SearchResponse, StageStatus, Subject
+from dfsa.contracts import ExplorationResult, StageStatus, Subject
 from dfsa.modules.explorer._types import FetchError
 from dfsa.service import orchestrator
 
-from live_v02_transport import LivePolicyError, LiveTransport, SiteScope
+from live_v02_transport import LivePolicyError, LiveTransport, PolicyReason, SiteScope
 
 MODULES = {
     "search": "dfsa.modules.search.runner_v2",
@@ -33,6 +38,26 @@ ERROR_CODES = frozenset(
      "SEARCH_TIMEOUT", "SEARCH_NETWORK_ERROR", "SEARCH_INVALID_RESPONSE", "SEARCH_API_ERROR"}
     | {kind.value for kind in FetchError}
 )
+_DETAIL_FIELDS = {
+    "search": {"searched_at", "queries", "results"},
+    "exploration": {"navigation_history", "limit_reached"},
+    "profiling": {"sources", "exposures"},
+    "analysis": {"personal_profile", "relationship_graph", "phishing_risk_scenarios", "security_recommendations"},
+}
+_VALIDATION_TYPES = {
+    "bool_type", "enum", "extra_forbidden", "greater_than_equal", "int_type", "list_type",
+    "literal_error", "missing", "model_type", "string_pattern_mismatch", "string_type", "value_error",
+}
+_SECRET_NAME = (
+    r"(?:(?:serpapi[-_ ])?api[-_ ]?key|(?:access[-_ ]?|refresh[-_ ]?)?token|password|authorization|secret|key)"
+)
+_SECRET_QUERY = re.compile(r"([?&#])([^=#?&\s]+)=([^&#\s]*)")
+_SECRET_ASSIGNMENT = re.compile(
+    rf"(?i)(\b{_SECRET_NAME}[\"']?\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s&,;]+)"
+)
+_URL_USERINFO = re.compile(r"(https?://)[^/?#\s]+@", re.IGNORECASE)
+_AUTH_TOKEN = re.compile(r"\b(Bearer|Basic)\s+[^\s,;]+", re.IGNORECASE)
+_HTML_PAGE = re.compile(r"<!doctype\s+html\b|<html(?:\s|>)", re.IGNORECASE)
 
 
 class _StopAtBoundary(Exception):
@@ -102,7 +127,56 @@ def _report_completed(stage, response, elapsed):
     }
 
 
-def _run(subject, until, transport):
+def _diagnostic(error, phase):
+    """Keep exception types and metadata on a fixed allowlist."""
+    if isinstance(error, LivePolicyError):
+        reason = error.reason if isinstance(error.reason, PolicyReason) else PolicyReason.POLICY
+        return {"phase": phase, "code": reason.value}
+    if isinstance(error, ValidationError):
+        kinds = Counter(
+            item["type"] if item["type"] in _VALIDATION_TYPES else "other"
+            for item in error.errors(include_input=False, include_context=False, include_url=False)
+        )
+        return {"phase": phase, "code": "contract_validation", "validation_errors": dict(kinds)}
+    if isinstance(error, ImportError):
+        code = "module_import_error"
+    elif isinstance(error, HTTPError) and type(error.code) is int and 100 <= error.code <= 599:
+        return {"phase": phase, "code": "http_error", "http_status": error.code}
+    elif isinstance(error, TimeoutError) or (isinstance(error, URLError) and isinstance(error.reason, TimeoutError)):
+        code = "network_timeout"
+    elif isinstance(error, URLError):
+        code = "network_error"
+    elif phase == "reference_validation" and isinstance(error, ValueError):
+        code = "invalid_reference"
+    else:
+        code = "unexpected_error"
+    return {"phase": phase, "code": code}
+
+
+def _redact_details(data, secrets, original_html):
+    if isinstance(data, dict):
+        return {key: _redact_details(value, secrets, original_html) for key, value in data.items()}
+    if isinstance(data, list):
+        return [_redact_details(value, secrets, original_html) for value in data]
+    if isinstance(data, str):
+        if _HTML_PAGE.search(data):
+            return "[HTML omitted]"
+        for html in original_html:
+            data = data.replace(html, "[HTML omitted]")
+        for secret in secrets:
+            data = data.replace(secret, "[REDACTED]")
+        data = _URL_USERINFO.sub(r"\1[REDACTED]@", data)
+        data = _AUTH_TOKEN.sub(r"\1 [REDACTED]", data)
+        data = _SECRET_QUERY.sub(
+            lambda match: f"{match[1]}{match[2]}=[REDACTED]"
+            if re.fullmatch(_SECRET_NAME, unquote_plus(match[2]), re.IGNORECASE) else match[0],
+            data,
+        )
+        return _SECRET_ASSIGNMENT.sub(r"\1[REDACTED]", data)
+    return data
+
+
+def _run(subject, until, transport, *, details=False):
     selected = STAGES[:STAGES.index(until) + 1]
     reports = {
         stage: {"status": "not_started" if stage in selected else "out_of_scope", "elapsed_ms": None}
@@ -115,24 +189,28 @@ def _run(subject, until, transport):
     final = None
     outcome = "completed"
     exit_code = 0
+    phase = "runner_setup"
 
     def boundary(stage):
         def call(request):
-            nonlocal problem_stage
+            nonlocal problem_stage, phase
             # Reaching this callable means existing response and cross-stage
             # validation for all preceding calls has already completed.
             validated.update(responses)
             if stage not in selected:
                 raise _StopAtBoundary
             problem_stage = stage
+            phase = "module_load"
             function = _load(stage)
             if stage == "search" and not os.environ.get("SERPAPI_API_KEY", "").strip():
                 raise _MissingSearchKey
             transport.stage = stage
             start = perf_counter()
+            phase = "module_execution"
             try:
                 response = function(request)
                 returned.add(stage)
+                phase = "response_validation"
                 return response
             finally:
                 transport.stage = None
@@ -142,17 +220,15 @@ def _run(subject, until, transport):
     call_stage = orchestrator._call
 
     def observe(module, request, model):
+        nonlocal phase
         response, elapsed = call_stage(module, request, model)
-        if isinstance(response, SearchResponse) and any(
-            not transport.scope.contains(item.url) for item in response.results
-        ):
-            raise LivePolicyError("Search returned a source outside the approved scope")
         if isinstance(response, ExplorationResult) and any(
             not transport.scope.contains(document.original_url)
             or not transport.scope.contains(document.final_url) for document in response.documents
         ):
-            raise LivePolicyError("An acquired document is outside the approved scope")
+            raise LivePolicyError("An acquired document is outside the approved scope", PolicyReason.PAGE_SCOPE)
         responses[problem_stage] = (response, elapsed)
+        phase = "reference_validation"
         return response, elapsed
 
     start = perf_counter()
@@ -178,23 +254,34 @@ def _run(subject, until, transport):
     except _MissingSearchKey:
         reports[problem_stage]["status"] = "missing_search_key"
         outcome, exit_code = "missing_search_key", 2
-    except LivePolicyError:
+    except LivePolicyError as exc:
         if problem_stage is not None:
             reports[problem_stage]["status"] = "policy_blocked"
+            reports[problem_stage]["diagnostic"] = _diagnostic(exc, phase)
         outcome, exit_code = "policy_blocked", 1
-    except Exception:
+    except Exception as exc:
         if problem_stage is not None:
             reports[problem_stage]["status"] = "invalid_response" if problem_stage in returned else "execution_error"
+            reports[problem_stage]["diagnostic"] = _diagnostic(exc, phase)
         outcome, exit_code = "execution_error", 1
     finally:
         logging.disable(previous_log_level)
 
+    key = os.environ.get("SERPAPI_API_KEY", "").strip() if details else ""
+    secrets = sorted({key, quote(key, safe=""), quote_plus(key)} - {""}, key=len, reverse=True)
+    original_html = (
+        tuple(document.html_text for document in responses["exploration"][0].documents if document.html_text)
+        if details and "exploration" in validated else ()
+    )
     for stage in selected:
         if stage in validated:
             response, elapsed = responses[stage]
             if final is not None:
                 elapsed = getattr(final.execution_time, f"{stage}_ms")
             reports[stage] = _report_completed(stage, response, elapsed)
+            if details:
+                payload = response.model_dump(mode="json", include=_DETAIL_FIELDS[stage])
+                reports[stage]["details"] = _redact_details(payload, secrets, original_html)
             if response.errors or response.status.value != "success":
                 exit_code = exit_code or 1
 
@@ -218,20 +305,26 @@ def main(argv=None):
     parser.add_argument("--live", action="store_true", help="Explicitly enable live execution")
     parser.add_argument("--consent-confirmed", action="store_true", help="Confirm target consent")
     parser.add_argument("--scope-approved", action="store_true", help="Confirm approval of site and providers")
-    parser.add_argument("--site-url", help="Approved HTTPS page or subtree (trailing slash)")
+    parser.add_argument("--site-url", help="Approved HTTPS page or subtree, required for Explorer and later")
+    parser.add_argument("--details", action="store_true", help="Show sensitive stage output in a local terminal")
     args = parser.parse_args(argv)
     if not (args.live and args.consent_confirmed and args.scope_approved):
         print("Live execution requires --live, --consent-confirmed and --scope-approved.")
         return 2
+    if args.details and not sys.stdout.isatty():
+        print("Detailed output requires a local terminal. Summary output is available without --details.")
+        return 2
     try:
-        scope = SiteScope(args.site_url or "")
+        scope = SiteScope(args.site_url) if args.site_url else None
+        if scope is None and args.until != "search":
+            raise LivePolicyError("Explorer requires an approved HTTPS site")
         subject = Subject.model_validate_json(os.environ["DFSA_V02_LIVE_SUBJECT_JSON"])
     except (KeyError, ValueError, LivePolicyError):
         print("Invalid live configuration. Set the subject environment variable and approved HTTPS scope.")
         return 2
 
-    report, exit_code = _run(subject, args.until, LiveTransport(scope))
-    print(json.dumps(report, ensure_ascii=True))
+    report, exit_code = _run(subject, args.until, LiveTransport(scope), details=args.details)
+    print(json.dumps(report, ensure_ascii=not args.details, indent=2 if args.details else None))
     return exit_code
 
 

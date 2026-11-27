@@ -2,16 +2,15 @@
 
 import http.client
 import io
-import json
 import math
 import re
 import socket
 import ssl
 from contextlib import ExitStack, contextmanager
+from enum import StrEnum
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, unquote, urlencode, urlsplit, urlunsplit
-from urllib.request import Request
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from dfsa.modules.explorer import fetch
 from dfsa.modules.explorer._types import FetchError, FetchProblem
@@ -19,11 +18,22 @@ from dfsa.modules.explorer.url_policy import check_url_text, validate_url
 from dfsa.modules.search import provider
 
 
+class PolicyReason(StrEnum):
+    POLICY = "approval_policy"
+    DIRECT_NETWORK = "direct_network_disabled"
+    PAGE_SCOPE = "page_outside_approved_scope"
+    DNS = "public_dns_or_url_rejected"
+    SEARCH_ENDPOINT = "unapproved_search_endpoint"
+    BUDGET = "request_budget_exhausted"
+    BODY_LIMIT = "response_body_limit"
+
+
 class LivePolicyError(RuntimeError):
     """The live runner stopped an operation outside its approval or budget."""
 
-
-_SEARCH_PARAMETERS = {"api_key", "engine", "gl", "hl", "num", "q"}
+    def __init__(self, message, reason=PolicyReason.POLICY):
+        super().__init__(message)
+        self.reason = reason
 
 
 def _https_parts(url):
@@ -96,7 +106,7 @@ class _HopResponse:
         except (OSError, http.client.HTTPException):
             raise URLError("Live response read failed") from None
         if len(chunk) > budget:
-            raise LivePolicyError("Live response exceeded the byte limit")
+            raise LivePolicyError("Live response exceeded the byte limit", PolicyReason.BODY_LIMIT)
         self._remaining -= len(chunk)
         return chunk
 
@@ -126,11 +136,13 @@ class LiveTransport:
     def install(self):
         """Expose only the reviewed adapters in this single-process CLI."""
         def denied(*args, **kwargs):
-            raise LivePolicyError("Direct network access is disabled")
+            raise LivePolicyError("Direct network access is disabled", PolicyReason.DIRECT_NETWORK)
 
         def scoped_dns(host, port, *args, **kwargs):
-            if self.stage != "exploration" or host != self.scope.host or port != 443:
-                raise LivePolicyError("DNS lookup outside the active stage or approved host")
+            if self.stage != "exploration":
+                denied()
+            if self.scope is None or host != self.scope.host or port != 443:
+                raise FetchProblem(FetchError.BLOCKED_URL, "DNS lookup outside the approved host")
             return self._resolve(host, port, *args, **kwargs)
 
         with ExitStack() as stack:
@@ -182,17 +194,19 @@ class LiveTransport:
         except FetchProblem as exc:
             if exc.kind == FetchError.DNS_ERROR:
                 raise URLError("Live DNS lookup failed") from None
-            raise LivePolicyError("Public DNS or URL policy rejected the request") from None
+            raise LivePolicyError("Public DNS or URL policy rejected the request", PolicyReason.DNS) from None
         except TimeoutError:
             raise URLError(TimeoutError("Live HTTPS timed out")) from None
         except (OSError, http.client.HTTPException):
             raise URLError("Live HTTPS failed") from None
 
     def open(self, request, *, timeout):
-        if self.stage != "exploration" or request.get_method() != "GET" or not self.scope.contains(request.full_url):
-            raise LivePolicyError("Page request or redirect is outside the approved HTTPS scope")
+        if self.stage != "exploration" or request.get_method() != "GET":
+            raise LivePolicyError("Page requests require the Explorer GET adapter", PolicyReason.DIRECT_NETWORK)
+        if self.scope is None or not self.scope.contains(request.full_url):
+            raise FetchProblem(FetchError.BLOCKED_URL, "Page request or redirect is outside the approved HTTPS scope")
         if self.html_requests >= 40:
-            raise LivePolicyError("HTML request budget exhausted")
+            raise LivePolicyError("HTML request budget exhausted", PolicyReason.BUDGET)
         self.html_requests += 1
         return self._request(request.full_url, timeout, 2 * 1024 * 1024,
                              {"Accept": "text/html, application/xhtml+xml", "Accept-Encoding": "identity"})
@@ -203,21 +217,11 @@ class LiveTransport:
             self.stage != "search" or request.get_method() != "GET"
             or (parts.hostname, parts.path) != ("serpapi.com", "/search.json") or parts.fragment
         ):
-            raise LivePolicyError("Only the approved search endpoint is allowed")
+            raise LivePolicyError("Only the approved search endpoint is allowed", PolicyReason.SEARCH_ENDPOINT)
         if self.search_requests >= 1:
-            raise LivePolicyError("Search request budget exhausted")
-        params = parse_qs(parts.query)
-        query = params.get("q", [])
-        if (
-            len(query) != 1 or params.get("engine", ["google"]) != ["google"]
-            or not params.keys() <= _SEARCH_PARAMETERS
-            or any(len(values) != 1 for values in params.values())
-        ):
-            raise LivePolicyError("Unexpected search request parameters")
-        params["q"] = [query[0] + f" site:{self.scope.host}"]
-        url = urlunsplit(("https", "serpapi.com", "/search.json", urlencode(params, doseq=True), ""))
+            raise LivePolicyError("Search request budget exhausted", PolicyReason.BUDGET)
         self.search_requests += 1
-        with self._request(url, timeout, 1024 * 1024, {"Accept": "application/json"}) as response:
+        with self._request(request.full_url, timeout, 1024 * 1024, {"Accept": "application/json"}) as response:
             if not 200 <= response.code < 300:
                 raise HTTPError(provider.SERPAPI_ENDPOINT, response.code, "Search HTTP failure",
                                 response.headers, None)
@@ -230,12 +234,4 @@ class LiveTransport:
                 if (len(lengths) != 1 or not length.isascii() or not length.isdecimal()
                         or len(length) > 20 or len(body) != int(length)):
                     raise URLError("Invalid search response length")
-        try:
-            payload = json.loads(body)
-        except (ValueError, UnicodeError):
-            return io.BytesIO(body)
-        if isinstance(payload, dict) and isinstance(payload.get("organic_results"), list):
-            results = payload["organic_results"]
-            if all(isinstance(item, dict) and isinstance(item.get("link"), str) for item in results):
-                payload["organic_results"] = [item for item in results if self.scope.contains(item["link"])]
-        return io.BytesIO(json.dumps(payload).encode("utf-8"))
+        return io.BytesIO(body)

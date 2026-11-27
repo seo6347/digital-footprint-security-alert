@@ -44,8 +44,9 @@ def configure(monkeypatch, v02_fixtures):
     return imports, inputs, handlers
 
 
-def invoke(until, capsys, *, site=SITE):
-    code = live_v02.main([*APPROVALS, "--site-url", site, "--until", until])
+def invoke(until, capsys, *, site=SITE, details=False):
+    flags = ["--details"] if details else []
+    code = live_v02.main([*APPROVALS, "--site-url", site, "--until", until, *flags])
     output = capsys.readouterr()
     assert not output.err
     return code, json.loads(output.out)
@@ -98,6 +99,15 @@ def test_missing_module_only_blocks_when_needed(configure, capsys):
     assert report["stages"]["profiling"]["status"] == "not_started"
 
 
+def test_search_only_does_not_require_an_explorer_scope(configure, capsys):
+    imports, _, _ = configure
+    assert live_v02.main([*APPROVALS, "--until", "search"]) == 0
+    assert json.loads(capsys.readouterr().out)["stages"]["search"]["status"] == "success"
+    assert live_v02.main([*APPROVALS, "--until", "exploration"]) == 2
+    assert "Invalid live configuration" in capsys.readouterr().out
+    assert imports == ["search"]
+
+
 @pytest.mark.parametrize("case,outcome,exit_code", [
     ("zero", "no_input_for_next_stage", 0), ("failed", "failed", 1),
 ])
@@ -127,6 +137,9 @@ def test_cutoff_keeps_cross_stage_validation(configure, capsys, v02_fixtures):
     assert imports == ["search", "exploration"]
     assert report["stages"]["search"]["status"] == "success"
     assert report["stages"]["exploration"]["status"] == "invalid_response"
+    assert report["stages"]["exploration"]["diagnostic"] == {
+        "phase": "reference_validation", "code": "invalid_reference",
+    }
     assert "src_unrelated" not in json.dumps(report)
 
 
@@ -148,23 +161,29 @@ def test_output_never_echoes_sensitive_data(configure, capsys, v02_fixtures):
     code, report = invoke("analysis", capsys)
     assert code == 1
     assert report["stages"]["analysis"]["errors"] == [{"code": "MODULE_ERROR", "retryable": False}]
+    assert "details" not in report["stages"]["analysis"]
     output = json.dumps(report)
     assert all(secret not in output for secret in (private, "Sample Researcher", "Sample Researcher Example University"))
 
 
-def test_out_of_scope_search_output_does_not_reach_explorer(configure, capsys, v02_fixtures):
-    imports, _, handlers = configure
+def test_search_output_reaches_explorer_unchanged_even_if_candidate_is_outside_scope(configure, capsys, v02_fixtures):
+    imports, inputs, handlers = configure
 
     def search(request):
         response = v02_fixtures["stage_responses"](request.request_id)[0]
-        result = response.results[0].model_copy(update={"url": "https://unapproved.example.org/profile"})
-        return response.model_copy(update={"results": [result]})
+        external = response.results[0].model_copy(update={
+            "source_id": "src_other", "url": "https://unapproved.example.org/profile",
+        })
+        return response.model_copy(update={"results": [external, *response.results]})
 
     handlers["run_search"] = search
-    code, report = invoke("analysis", capsys)
-    assert code == 1
-    assert imports == ["search"]
-    assert report["outcome"] == "policy_blocked"
+    code, report = invoke("exploration", capsys)
+    assert code == 0
+    assert imports == ["search", "exploration"]
+    assert [item.url for item in inputs[1].search_results] == [
+        "https://unapproved.example.org/profile", v02_fixtures["URL"],
+    ]
+    assert report["stages"]["search"]["output"]["discovered_sources"] == 2
 
 
 @pytest.mark.parametrize("url", [
@@ -176,8 +195,20 @@ def test_redirect_scope_is_checked_before_transport(url, monkeypatch):
     transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
     transport.stage = "exploration"
     monkeypatch.setattr(transport, "_request", lambda *args: pytest.fail("HTTP attempted"))
-    with pytest.raises(live_v02_transport.LivePolicyError):
+    with pytest.raises(live_v02_transport.FetchProblem, match="approved HTTPS scope"):
         transport.open(Request(url), timeout=3)
+    assert transport.html_requests == 0
+
+
+def test_explorer_fetch_reports_unapproved_candidates_without_http(monkeypatch):
+    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
+    transport.stage = "exploration"
+    monkeypatch.setattr(transport, "_resolve", lambda *args, **kwargs: pytest.fail("DNS attempted"))
+    monkeypatch.setattr(transport, "_request", lambda *args: pytest.fail("HTTP attempted"))
+    candidate = SimpleNamespace(source_id="src_other", url="https://unapproved.example.org/people/a")
+    with transport.install():
+        result = live_v02_transport.fetch.fetch_html(candidate)
+    assert result.kind == live_v02_transport.FetchError.BLOCKED_URL
     assert transport.html_requests == 0
 
 
@@ -216,27 +247,31 @@ def test_host_pinning_uses_checked_dns_preserving_tls_hostname(monkeypatch):
     assert addresses == [("93.184.216.34", 443)]
 
 
-def test_search_scope_is_applied_before_request_and_results_are_filtered(monkeypatch):
+def test_search_request_and_response_are_forwarded_without_rewriting(monkeypatch):
     transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
     transport.stage = "search"
     responses = [
         "https://lab.example.org/people/a", "https://lab.example.org/other",
         "https://unapproved.example.org/people/a",
     ]
-    body = io.BytesIO(json.dumps({"organic_results": [{"link": url} for url in responses]}).encode())
+    raw = json.dumps({"organic_results": [{"link": url} for url in responses]}, indent=2).encode()
+    body = io.BytesIO(raw)
     body.code = 200
     body.headers = Message()
 
-    def request(url, timeout, limit, headers):
-        parts = urlsplit(url)
+    url = "https://serpapi.com/search.json?engine=google&q=synthetic%20name&num=10"
+
+    def request(actual_url, timeout, limit, headers):
+        assert actual_url == url
+        parts = urlsplit(actual_url)
         assert parts.hostname == "serpapi.com"
-        assert parse_qs(parts.query)["q"] == ["synthetic name site:lab.example.org"]
+        assert parse_qs(parts.query)["q"] == ["synthetic name"]
         return body
 
     monkeypatch.setattr(transport, "_request", request)
-    request = Request("https://serpapi.com/search.json?q=synthetic+name")
+    request = Request(url)
     with transport.search(request, timeout=3) as payload:
-        assert json.load(payload)["organic_results"] == [{"link": responses[0]}]
+        assert payload.read() == raw
     with pytest.raises(live_v02_transport.LivePolicyError, match="budget"):
         transport.search(request, timeout=3)
 
@@ -268,3 +303,78 @@ def test_scope_can_allow_one_page_and_blocks_network_in_profiling():
     request = Request("https://lab.example.org/people/profile")
     with transport.install(), pytest.raises(live_v02_transport.LivePolicyError):
         transport.open(request, timeout=3)
+
+
+def test_details_are_kept_out_of_redirected_output(configure, capsys, monkeypatch):
+    imports, _, _ = configure
+    monkeypatch.setattr(live_v02.sys.stdout, "isatty", lambda: False)
+    assert live_v02.main([*APPROVALS, "--site-url", SITE, "--until", "search", "--details"]) == 2
+    assert imports == []
+    assert "requires a local terminal" in capsys.readouterr().out
+
+
+def test_terminal_details_show_actual_content_except_credentials_and_raw_html(
+    configure, capsys, monkeypatch, v02_fixtures,
+):
+    _, _, handlers = configure
+    monkeypatch.setattr(live_v02.sys.stdout, "isatty", lambda: True)
+    monkeypatch.setenv("SERPAPI_API_KEY", "synthetic+private-key")
+    url = "https://user:credential@unapproved.example.org/result?view=public&api%5Fkey=other-secret"
+    evidence = "Observed affiliation: Example University"
+    raw_html = v02_fixtures["stage_responses"]()[1].documents[0].html_text
+
+    def search(request):
+        response = v02_fixtures["stage_responses"](request.request_id)[0]
+        external = response.results[0].model_copy(update={
+            "source_id": "src_other", "url": url, "snippet": "API key: synthetic%2Bprivate-key",
+        })
+        return response.model_copy(update={"results": [*response.results, external]})
+
+    def exploration(request):
+        response = v02_fixtures["stage_responses"](request.request_id)[1]
+        nav = response.navigation_history[0].model_copy(update={"reason": raw_html})
+        return response.model_copy(update={"navigation_history": [nav]})
+
+    def profiling(request):
+        response = v02_fixtures["stage_responses"](request.request_id)[2]
+        source = response.exposures[0].sources[0].model_copy(update={"evidence": evidence})
+        exposure = response.exposures[0].model_copy(update={"sources": [source]})
+        return response.model_copy(update={"exposures": [exposure]})
+
+    handlers.update(run_search=search, run_exploration=exploration, run_profiling=profiling)
+    code, report = invoke("analysis", capsys, details=True)
+    assert code == 0
+    stages = report["stages"]
+    assert stages["search"]["details"]["queries"][0]["text"] == "Sample Researcher Example University"
+    assert "view=public" in stages["search"]["details"]["results"][1]["url"]
+    assert stages["exploration"]["details"]["navigation_history"][0]["reason"] == "[HTML omitted]"
+    assert stages["profiling"]["details"]["exposures"][0]["sources"][0]["evidence"] == evidence
+    assert stages["analysis"]["details"]["relationship_graph"]["edges"]
+    rendered = json.dumps(report)
+    assert all(value not in rendered for value in (
+        "synthetic+private-key", "synthetic%2Bprivate-key", "user:credential", "other-secret",
+        raw_html, '"html_text"', '"documents": [',
+    ))
+
+
+def test_invalid_response_diagnostic_omits_payload_and_raw_exception(configure, capsys):
+    _, _, handlers = configure
+    handlers["run_search"] = lambda request: {"status": "bad", "pasted-secret": "hidden@example.org"}
+    code, report = invoke("search", capsys)
+    assert code == 1
+    diagnostic = report["stages"]["search"]["diagnostic"]
+    assert diagnostic["phase"] == "response_validation"
+    assert diagnostic["code"] == "contract_validation"
+    assert diagnostic["validation_errors"]["missing"] > 0
+    assert "hidden@example.org" not in json.dumps(report)
+
+
+def test_direct_network_error_has_safe_diagnostic(configure, capsys):
+    _, _, handlers = configure
+    handlers["run_exploration"] = lambda request: socket.create_connection(("private.example.org", 443))
+    code, report = invoke("exploration", capsys)
+    assert code == 1
+    assert report["stages"]["exploration"]["diagnostic"] == {
+        "phase": "module_execution", "code": "direct_network_disabled",
+    }
+    assert "private.example.org" not in json.dumps(report)

@@ -141,16 +141,21 @@ print(result.model_dump_json(indent=2))
 팀이 대상자의 동의와 사이트·외부 서비스 사용을 승인한 로컬 시연에서만 실행합니다. 승인된 대상의 `name`, `organization`, 선택 `email` JSON은 `DFSA_V02_LIVE_SUBJECT_JSON`에, 검색 키는 기존 `SERPAPI_API_KEY`에 설정합니다. 실제 값은 명령줄이나 저장소 파일에 넣지 않습니다.
 
 ```powershell
-python tests/e2e/live_v02.py --until search --live --consent-confirmed --scope-approved --site-url https://approved.example.org/research/
+python tests/e2e/live_v02.py --until search --live --consent-confirmed --scope-approved
+python tests/e2e/live_v02.py --until exploration --details --live --consent-confirmed --scope-approved --site-url https://approved.example.org/research/
 ```
 
 `--until`은 `search`, `exploration`, `profiling`, `analysis` 중 하나입니다. 위 연결 표의 실제 callable을 단계가 필요해질 때 불러옵니다. `analysis`는 전체 Orchestrator를 실행합니다. 중간 단계에서 멈출 때도 같은 Orchestrator의 응답 및 참조 검증을 적용합니다. 미연결 단계에서는 `not_connected`와 필요한 callable을 표시합니다. 정상 0건 등으로 후속 단계 입력이 없으면 `not_started`를 유지합니다.
 
-`--site-url`은 정확한 HTTPS 호스트의 한 페이지를 지정합니다. 경로가 `/`로 끝나면 해당 하위 경로를 포함하고, 호스트만 지정하면 전체 호스트 범위가 됩니다. 사이트 승인 범위에는 해당 경로에 필요한 쿼리 변형도 포함되어야 합니다. 검색은 승인된 SerpApi에서 1회 실행하며 사이트 범위에 해당하는 응답만 전달합니다. Explorer의 기존 Fetch 어댑터는 각 HTTP hop에서 범위를 검사하고 검증된 공개 IP에 연결하면서 원래 호스트로 TLS를 검증합니다. HTML 요청 상한은 redirect 포함 40회, 응답당 상한은 2 MiB입니다.
+검색은 승인된 SerpApi에 1회 요청합니다. 실행기는 Module A의 검색어, 요청 파라미터 및 응답을 그대로 전달하므로 승인 사이트 밖의 URL도 검색 결과에서 확인할 수 있습니다.
 
-신규 A는 기존 `SerpApiProvider`, Explorer는 기존 `fetch_html`의 기본 opener를 통해 실행기에 연결합니다. 이 로컬 실행기는 검토된 모듈용이며, 기타 직접 네트워크 연결을 막습니다. 학교 LLM API 호출은 승인된 어댑터가 추가될 때까지 현재 실행 경로에서 사용할 수 없습니다.
+`--site-url`은 Explorer 이후를 실행할 때 필요합니다. 정확한 HTTPS 호스트의 한 페이지를 지정하고, 경로가 `/`로 끝나면 해당 하위 경로를 포함합니다. 호스트만 지정하면 전체 호스트가 범위가 되며, 승인에는 해당 경로에 필요한 쿼리 변형도 포함됩니다. Explorer의 Fetch 어댑터만 이 범위를 적용합니다. 각 HTTP hop을 검사하고 검증된 공개 IP에 연결하며 원래 호스트로 TLS를 검증합니다. HTML 요청 상한은 redirect 포함 40회, 응답당 상한은 2 MiB입니다.
 
-출력은 단계별 상태·시간·건수·분류 및 안전한 오류 코드의 JSON입니다. 검색어, URL, 개인 값, 원문 HTML, 오류 메시지는 출력하지 않습니다. 종료 코드는 정상 실행 또는 정상 0건 0, 실행·정책 오류나 부분 성공 1, 승인·설정 오류 또는 미연결 2입니다.
+신규 A는 기존 `SerpApiProvider`, Explorer는 기존 `fetch_html`의 기본 opener를 통해 연결합니다. 검토된 모듈의 해당 연결만 허용하며, 학교 LLM API 연결은 Module B 개발 단계에서 다룹니다.
+
+기본 JSON은 단계별 상태·시간·건수·분류 및 안전한 오류 코드만 보여줍니다. 실제 내용을 보려면 로컬 터미널에서 `--details`를 지정합니다. 검색어·URL, 탐색 이력, Exposure·Evidence와 C의 분석 결과에 동의 대상의 정보가 포함될 수 있습니다. 상세 출력은 터미널에서만 제공하며 API 키와 URL 자격 증명을 가리고 원문 HTML은 제외합니다. 예외는 발생 단계, 진단 코드, 검증 오류 유형이나 HTTP 상태만 표시합니다.
+
+종료 코드는 정상 실행 또는 정상 0건 0, 실행·정책 오류나 부분 성공 1, 승인·설정 오류 또는 미연결 2입니다.
 
 실제 네트워크를 사용하지 않는 실행기 회귀 검증은 `python -m pytest tests/e2e/test_live_v02.py`로 실행합니다.
 
