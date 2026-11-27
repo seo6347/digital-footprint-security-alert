@@ -1,362 +1,1378 @@
 <!doctype html>
 <html lang="ko">
-	<head>
-		<meta charset="utf-8">
-			<meta name="viewport" content="width=device-width,initial-scale=1">
-				<title>낚이지마! · Don'tBePhished</title>
-				<style>
-					:root{--bg:#eff8fc;--ink:#183b4e;--muted:#526b7a;--line:#d7e7ef;--orange:#f28a3b;--sea:#227d94;--radius:20px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,'Apple SD Gothic Neo','Nanum Gothic',sans-serif;line-height:1.6}button,input{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--sea);outline-offset:4px}button{border:0}a{color:var(--sea)}.wrap{max-width:1200px;margin:auto;padding:0 28px}header{height:86px;background:#fff;border-bottom:1px solid var(--line)}header .wrap{height:100%;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;border:0;background:none;color:var(--ink);padding:0;text-align:left}.brand strong{font-size:26px;letter-spacing:-1px}.brand small{display:block;font-size:10px;letter-spacing:1.5px}.brand-icon{background:var(--sea);color:white;width:43px;height:43px;border-radius:15px;display:grid;place-items:center;font-size:25px}.nav{display:flex;align-items:center;gap:20px}.btn{padding:12px 22px;border-radius:12px;background:var(--orange);color:var(--ink);font-weight:750}.btn.secondary{background:white;border:1px solid var(--line)}.textbtn{background:transparent;color:var(--muted)}.tag{display:inline-block;border-radius:7px;padding:3px 9px;background:#e5f3f6;color:#19586a;font-size:12px;font-weight:700}.demo{background:#fff0df;color:#79400c}.page{display:none;padding-top:44px;padding-bottom:68px}.page.active{display:block}h1,h2,h3,p{margin-top:0}h1{font-size:36px;line-height:1.3;letter-spacing:-1.3px;margin-bottom:14px}h2{font-size:21px;letter-spacing:-.6px}h3{font-size:17px;margin-bottom:8px}.muted{color:var(--muted)}.sub{font-size:15px;color:var(--muted)}.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px}.hero{display:grid;grid-template-columns:1.1fr 1fr;align-items:center;gap:55px;padding:45px 0 65px}.hero h1{font-size:52px}.hero .btn{margin-top:16px}.eyebrow{font-size:12px;letter-spacing:2px;color:var(--sea);font-weight:750;margin-bottom:18px}.ocean{position:relative;min-height:340px;overflow:hidden;background:linear-gradient(#d9eff8 0 42%,#b9e0ed 42% 65%,#92ccdc 65%);border:8px solid white;border-radius:42% 42% 25px 25px;box-shadow:0 18px 40px #227d9410}.cat{position:absolute;right:50px;top:43px;width:66px;height:62px;background:#253d4b;border-radius:40%}.cat:before,.cat:after{content:'';position:absolute;top:-18px;border-left:17px solid transparent;border-right:17px solid transparent;border-bottom:30px solid #253d4b}.cat:before{left:0}.cat:after{right:0}.eyes{position:absolute;top:20px;left:14px;color:#ffe1a4;letter-spacing:12px;font-weight:900}.fish{position:absolute;width:78px;height:47px;border-radius:50%;background:#fff0c7;left:28%;top:62%;transform:rotate(-8deg)}.fish:before{content:'';position:absolute;left:-22px;top:7px;border-top:17px solid transparent;border-bottom:17px solid transparent;border-left:27px solid #f28a3b}.fish:after{content:'';position:absolute;right:16px;top:13px;width:6px;height:6px;background:var(--ink);border-radius:50%}.bubble{position:absolute;border:2px solid #ffffffa8;border-radius:50%;width:17px;height:17px;top:58%;left:67%}.bubble.two{width:9px;height:9px;top:49%;left:72%}.sea-label{position:absolute;background:#ffffffed;border:1px solid #fff;border-radius:10px;padding:7px 13px;font-size:12px;box-shadow:0 5px 15px #183b4e0a}.sea-label.one{left:22px;top:36%}.sea-label.two{right:19px;bottom:33px}.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.step-number{color:var(--sea);font-size:13px;font-weight:800;margin-bottom:12px}.intro{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:22px}.intro p{margin-bottom:5px}.subject{font-size:13px;text-align:right;background:#fff;border:1px solid var(--line);padding:12px 17px;border-radius:13px}.notice{background:#e4f0f5;border-radius:12px;padding:12px 16px;font-size:13px;color:#38596b;margin-bottom:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}.stat{padding:21px 24px}.stat span{font-size:13px;color:var(--muted)}.stat strong{display:block;font-size:30px;margin-top:4px}.stat strong small{font-size:14px;font-weight:500;margin-left:5px}.tabs{display:flex;border-bottom:1px solid #cbdfe8;gap:28px;margin-bottom:26px}.tab{padding:13px 2px;background:none;color:var(--muted);border-bottom:3px solid transparent;font-size:15px}.tab[aria-selected=true]{color:var(--sea);border-color:var(--sea);font-weight:800}.tab small{margin-left:5px}.result-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,1fr);gap:22px;align-items:start}.path{display:block;width:100%;text-align:left;margin-bottom:16px;background:#fff}.path.selected{border:2px solid var(--sea);padding:25px}.path-head{display:flex;justify-content:space-between;gap:12px}.path .sub{font-size:13px}.badge{display:inline-flex;align-items:center;gap:5px;background:#e7f3f5;color:#19586a;border-radius:7px;padding:4px 9px;font-size:12px;white-space:nowrap;height:fit-content}.badge.candidate{background:#fff0df;color:#79400c}.path-flow{display:flex;align-items:center;gap:13px;margin-top:22px}.chips{display:flex;flex-wrap:wrap;gap:7px;flex:1}.chip{border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:#f7fbfd;font-size:12px}.arrow{color:var(--sea);font-size:25px}.destination{background:#eaf5f8;padding:12px;border-radius:12px;font-size:13px;max-width:150px;font-weight:700}.detail{position:sticky;top:20px}.detail hr{border:0;border-top:1px solid var(--line);margin:22px 0}.detail p,.detail li{font-size:14px}.detail ul{padding-left:20px}.detail .btn{width:100%;font-size:13px}.detail-label{font-size:11px;letter-spacing:1px;font-weight:750;color:var(--sea);margin-bottom:8px}.exposure-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.exposure-card{background:#fff;text-align:left;min-height:145px;color:var(--ink)}.exposure-card h3{margin-top:12px;overflow-wrap:anywhere}.exposure-card small{color:var(--sea)}.recommendations{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.recommendations .number{font-size:25px;color:var(--sea);font-weight:800}.form-card{max-width:530px;margin:20px auto}.form-card h1{font-size:29px}.field{margin-bottom:20px}.field label{display:block;font-size:14px;font-weight:700;margin-bottom:7px}.field input{width:100%;border:1px solid #bed3dd;border-radius:11px;background:#fbfdfe;padding:13px;color:var(--ink)}.form-card .btn{width:100%}.check{font-size:13px;display:flex;gap:9px;align-items:flex-start;margin:20px 0}.check input{margin-top:5px}.form-help{font-size:12px;color:var(--muted)}.loading-card{max-width:580px;margin:65px auto;text-align:center}.spinner{width:56px;height:56px;border:5px solid #dcecf2;border-top-color:var(--sea);border-radius:50%;animation:spin 1s linear infinite;margin:25px auto}.progress-list{list-style:none;text-align:left;padding:0;margin:28px 0}.progress-list li{padding:14px;border-bottom:1px solid var(--line);color:var(--muted)}.progress-list li.current{color:var(--sea);font-weight:750}.empty{text-align:center;padding:65px 25px}.empty h2{margin-top:12px}.demo-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:30px;font-size:11px;color:var(--muted)}.demo-controls button{background:white;border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 9px;font-size:11px}.demo-controls button.active{border-color:var(--sea);color:var(--sea)}footer{border-top:1px solid var(--line);padding:25px 0;color:var(--muted);font-size:12px}footer .wrap{display:flex;justify-content:space-between;gap:20px}dialog{border:1px solid var(--line);border-radius:20px;padding:28px;width:min(600px,calc(100% - 32px));color:var(--ink);max-height:85vh}dialog::backdrop{background:#183b4e66}.modal-head{display:flex;justify-content:space-between;align-items:center;gap:15px}.close{background:#edf5f8;border-radius:8px;padding:7px 12px;color:var(--ink)}.evidence{background:#f1f7fa;border-left:3px solid var(--sea);padding:14px;font-size:14px;margin:14px 0}.source-block{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}.source-block a{font-size:12px;overflow-wrap:anywhere}.hidden{display:none!important}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}@media(max-width:850px){.hero{gap:25px}.hero h1{font-size:39px}.ocean{min-height:300px}.result-grid{grid-template-columns:1fr}.detail{position:static}.exposure-grid{grid-template-columns:repeat(2,1fr)}.intro{flex-direction:column}.subject{text-align:left}.stats{gap:10px}.stat{padding:17px}.steps-grid{grid-template-columns:1fr}}@media(max-width:600px){.wrap{padding:0 18px}header{height:75px}.brand strong{font-size:21px}.brand small{font-size:8px}.brand-icon{width:36px;height:36px}.nav{gap:8px}.nav .textbtn{display:none}.btn{padding:10px 15px}.page{padding-top:30px}h1{font-size:28px}.hero{grid-template-columns:1fr;padding:20px 0 35px}.hero h1{font-size:38px}.ocean{min-height:270px}.stats{grid-template-columns:repeat(2,1fr)}.tabs{gap:20px}.tab{font-size:14px}.card{padding:20px}.path.selected{padding:19px}.path-flow{flex-wrap:wrap}.destination{max-width:none}.path-head{flex-wrap:wrap}.exposure-grid,.recommendations{grid-template-columns:1fr}footer .wrap{flex-direction:column;gap:5px}}
-					.brand-logo {
-					display: block;
-					height: 70px;
-					width: auto;
-					max-width: none;
-					max-height: none;
-					object-fit: contain;
-					}
 
-					@media (max-width: 600px) {
-					.brand-logo {
-					height: 60px;
-					max-width: 180px;
-					}
-					}
-
-					/* 서비스 소개 이미지 영역 */
-					/* 이미지를 감싸는 흰색 프레임 */
-					.hero-illustration {
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					min-width: 0;
-
-					background: #ffffff;
-					padding: 16px;
-					border: 1px solid #d7e7ef;
-					border-radius: 28px;
-
-					box-shadow: 0 12px 32px rgba(24, 59, 78, 0.08);
-					overflow: hidden;
-					}
-
-					/* 프레임 안의 이미지 */
-					.intro-image {
-					display: block;
-					width: 100%;
-					height: auto;
-					border-radius: 16px;
-					}
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>낚이지마! · Don'tBePhished</title>
+	<style>
+		:root {
+			--bg: #eff8fc;
+			--ink: #eff8fc;
+			--muted: #eff8fc;
+			--line: #d7e7ef;
+			--orange: #f28a3b;
+			--sea: #227d94;
+			--radius: 20px
+		}
+		/* 1. 상하좌우 회색 포인트 테두리 공통 클래스 */
+/* 1. 상하좌우 회색 포인트 테두리 공통 클래스 */
+/* 1. 공통 구조 설정 */
 
 
+/* 3. 버튼 테두리 이미지 설정 */
 
-				</style>
-	</head>
-	<body>
-		<header>
-			<div class="wrap">
-				<button class="brand" data-go="home" aria-label="낚이지마! 홈">
-					<img
-    src="./logo.png"
-    alt=""
-     class="brand-logo"
-  >
-					
-					<span>
-						<strong>낚이지마!</strong>
-						<small>DON'T BE PHISHED</small>
-					</span>
-				</button>
-				<nav class="nav" aria-label="주 메뉴">
-					<button class="textbtn" data-go="home">서비스 소개</button>
-					<button class="btn" data-go="input">검사 시작</button>
-				</nav>
+/* 버튼 배경을 주황색으로 설정 */
+.btn {
+	padding: 12px 28px;
+	border-radius: 999px;       /* 알약 형태 모서리 */
+	background: #f28a3b;        /* 주황색 배경 */
+	color: #ffffff;             /* 글자색 흰색 */
+	font-weight: 750;
+	border: none !important;    /* 기존 테두리 제거 */
+	cursor: pointer;
+	transition: background-color 0.2s, transform 0.1s;
+}
+
+/* 마우스 올렸을 때 조금 더 짙은 주황색 효과 */
+.btn:hover {
+	background: #e0792a;
+}
+
+/* 버튼 클릭할 때 누르는 효과 */
+.btn:active {
+	transform: scale(0.98);
+}
+
+
+		* {
+			box-sizing: border-box
+		}
+
+
+body {
+	color: var(--ink);
+	font-family: system-ui, 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif;
+	line-height: 1.6;
+	min-height: 100vh;
+
+	/* 배경 이미지 스크롤 설정 */
+	background-image: url('./background.png');
+	background-size: 100% auto;     /* 가로에 맞추고 세로는 원본 비율 유지 */
+	background-position: top center; /* 위쪽(상단)부터 이미지 배치 */
+	background-repeat: no-repeat;
+	background-attachment: scroll;   /* 스크롤할 때 배경도 함께 이동 */
+}
+
+		button,
+		input {
+			font: inherit
+		}
+
+		button {
+			cursor: pointer
+		}
+
+		button:focus-visible,
+		a:focus-visible,
+		input:focus-visible {
+			outline: 3px solid var(--sea);
+			outline-offset: 4px
+		}
+
+		button {
+			border: 0
+		}
+
+		a {
+			color: var(--sea)
+		}
+
+		.wrap {
+			max-width: 1200px;
+			margin: auto;
+			padding: 0 28px
+		}
+
+		header {
+			height: 86px;
+			background: transparent;
+			border-bottom: none
+		}
+
+/* 헤더 전체 컨테이너 기준점 설정 */
+header .wrap {
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end; /* 내비게이션 버튼을 우측 끝으로 이동 */
+	position: relative;        /* 로고 중앙 배치의 기준점이 됨 */
+}
+
+/* 로고 & 제목 브랜드 영역 중앙 고정 */
+.brand {
+	position: absolute;
+	left: 50%;
+	transform: translateX(-50%); /* 정확한 가로 중앙 정렬 */
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	padding: 0;
+	text-align: left;
+}
+
+		.brand strong {
+			font-size: 26px;
+			letter-spacing: -1px
+		}
+
+		.brand small {
+			display: block;
+			font-size: 10px;
+			letter-spacing: 1.5px
+		}
+
+		.brand-icon {
+			background: var(--sea);
+			color: white;
+			width: 43px;
+			height: 43px;
+			border-radius: 15px;
+			display: grid;
+			place-items: center;
+			font-size: 25px
+		}
+
+		.nav {
+			display: flex;
+			align-items: center;
+			gap: 20px
+		}
+
+		
+
+		.btn.secondary {
+			background: white;
+			border: 1px solid var(--line)
+		}
+
+		.textbtn {
+			background: transparent;
+			color: var(--muted)
+		}
+
+		.tag {
+			display: inline-block;
+			border-radius: 7px;
+			padding: 3px 99px;
+			background: #e5f3f6;
+			color: #19586a;
+			font-size: 12px;
+			font-weight: 700
+		}
+
+		.demo {
+			background: #fff0df;
+			color: #79400c
+		}
+
+		.page {
+			display: none;
+			padding-top: 44px;
+			padding-bottom: 68px
+		}
+
+		.page.active {
+			display: block
+		}
+
+		h1,
+		h2,
+		h3,
+		p {
+			margin-top: 0
+		}
+
+		h1 {
+			font-size: 36px;
+			line-height: 1.3;
+			letter-spacing: -1.3px;
+			margin-bottom: 14px
+		}
+
+		h2 {
+			font-size: 21px;
+			letter-spacing: -.6px
+		}
+
+		h3 {
+			font-size: 17px;
+			margin-bottom: 8px
+		}
+
+		.muted {
+			color: var(--muted)
+		}
+
+		.sub {
+			font-size: 15px;
+			color: var(--muted)
+		}
+
+		/* 버튼 (알약 형태) */
+.btn {
+  padding: 12px 28px;
+  border-radius: 999px; /* 모서리를 둥글게 */
+  background: var(--orange);
+  color: var(--ink);
+  font-weight: 750;
+}
+
+/* 카드 (모서리가 살짝 둥근 사각형) */
+.card {
+	background: rgba(255, 255, 255, 0.15); /* 반투명 흰색 */
+	backdrop-filter: blur(12px);            /* 뒤 배경 은은하게 흐림 처리 */
+	-webkit-backdrop-filter: blur(12px);
+	border-radius: 24px;
+	padding: 26px;
+	color: #ffffff;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.exposure-card,
+.path,
+.subject {
+	background: rgba(255, 255, 255, 0.1) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card .sub, 
+.card .muted, 
+.card .form-help {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+		.hero {
+	display: flex;
+	justify-content: flex-end; /* 전체 영역을 오른쪽으로 배치 */
+	padding: 45px 0 65px;
+}
+
+/* (선택) 글 영역 폭을 너무 넓지 않게 제한할 경우 */
+.hero > div {
+	max-width: 550px;
+}
+
+		.hero h1 {
+			font-size: 52px
+		}
+
+		.hero .btn {
+			margin-top: 16px
+		}
+
+		.eyebrow {
+			font-size: 12px;
+			letter-spacing: 2px;
+			color: var(--sea);
+			font-weight: 750;
+			margin-bottom: 18px
+		}
+
+		.ocean {
+			position: relative;
+			min-height: 340px;
+			overflow: hidden;
+			background: linear-gradient(#d9eff8 0 42%, #b9e0ed 42% 65%, #92ccdc 65%);
+			border: 8px solid white;
+			border-radius: 42% 42% 25px 25px;
+			box-shadow: 0 18px 40px #227d9410
+		}
+
+		.cat {
+			position: absolute;
+			right: 50px;
+			top: 43px;
+			width: 66px;
+			height: 62px;
+			background: #253d4b;
+			border-radius: 40%
+		}
+
+		.cat:before,
+		.cat:after {
+			content: '';
+			position: absolute;
+			top: -18px;
+			border-left: 17px solid transparent;
+			border-right: 17px solid transparent;
+			border-bottom: 30px solid #253d4b
+		}
+
+		.cat:before {
+			left: 0
+		}
+
+		.cat:after {
+			right: 0
+		}
+
+		.eyes {
+			position: absolute;
+			top: 20px;
+			left: 14px;
+			color: #ffe1a4;
+			letter-spacing: 12px;
+			font-weight: 900
+		}
+
+		.fish {
+			position: absolute;
+			width: 78px;
+			height: 47px;
+			border-radius: 50%;
+			background: #fff0c7;
+			left: 28%;
+			top: 62%;
+			transform: rotate(-8deg)
+		}
+
+		.fish:before {
+			content: '';
+			position: absolute;
+			left: -22px;
+			top: 7px;
+			border-top: 17px solid transparent;
+			border-bottom: 17px solid transparent;
+			border-left: 27px solid #f28a3b
+		}
+
+		.fish:after {
+			content: '';
+			position: absolute;
+			right: 16px;
+			top: 13px;
+			width: 6px;
+			height: 6px;
+			background: var(--ink);
+			border-radius: 50%
+		}
+
+		.bubble {
+			position: absolute;
+			border: 2px solid #ffffffa8;
+			border-radius: 50%;
+			width: 17px;
+			height: 17px;
+			top: 58%;
+			left: 67%
+		}
+
+		.bubble.two {
+			width: 9px;
+			height: 9px;
+			top: 49%;
+			left: 72%
+		}
+
+		.sea-label {
+			position: absolute;
+			background: #ffffffed;
+			border: 1px solid #fff;
+			border-radius: 10px;
+			padding: 7px 13px;
+			font-size: 12px;
+			box-shadow: 0 5px 15px #183b4e0a
+		}
+
+		.sea-label.one {
+			left: 22px;
+			top: 36%
+		}
+
+		.sea-label.two {
+			right: 19px;
+			bottom: 33px
+		}
+
+		.steps-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 18px
+		}
+
+		.step-number {
+			color: var(--sea);
+			font-size: 13px;
+			font-weight: 800;
+			margin-bottom: 12px
+		}
+
+		.intro {
+			display: flex;
+			justify-content: space-between;
+			gap: 20px;
+			align-items: flex-start;
+			margin-bottom: 22px
+		}
+
+		.intro p {
+			margin-bottom: 5px
+		}
+
+		.subject {
+			font-size: 13px;
+			text-align: right;
+			background: #fff;
+			border: 1px solid var(--line);
+			padding: 12px 17px;
+			border-radius: 13px
+		}
+
+		.notice {
+			background: #e4f0f5;
+			border-radius: 12px;
+			padding: 12px 16px;
+			font-size: 13px;
+			color: #38596b;
+			margin-bottom: 24px
+		}
+
+		.stats {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 16px;
+			margin-bottom: 28px
+		}
+
+		.stat {
+			padding: 21px 24px
+		}
+
+		.stat span {
+			font-size: 13px;
+			color: var(--muted)
+		}
+
+		.stat strong {
+			display: block;
+			font-size: 30px;
+			margin-top: 4px
+		}
+
+		.stat strong small {
+			font-size: 14px;
+			font-weight: 500;
+			margin-left: 5px
+		}
+
+		.tabs {
+			display: flex;
+			border-bottom: 1px solid #cbdfe8;
+			gap: 28px;
+			margin-bottom: 26px
+		}
+
+		.tab {
+			padding: 13px 2px;
+			background: none;
+			color: var(--muted);
+			border-bottom: 3px solid transparent;
+			font-size: 15px
+		}
+
+		.tab[aria-selected=true] {
+			color: var(--sea);
+			border-color: var(--sea);
+			font-weight: 800
+		}
+
+		.tab small {
+			margin-left: 5px
+		}
+
+		.result-grid {
+			display: grid;
+			grid-template-columns: minmax(0, 1.7fr) minmax(290px, 1fr);
+			gap: 22px;
+			align-items: start
+		}
+		/* 제목 및 주요 텍스트 요소만 흰색 바탕 + 검은색 테두리 적용 */
+h1, h2, h3, .eyebrow {
+	color: #ffffff !important;
+	-webkit-text-stroke: 1.2px #000000;
+	text-shadow: 
+		-1px -1px 0 #000,  
+		 1px -1px 0 #000,
+		-1px  1px 0 #000,
+		 1px  1px 0 #000;
+}
+
+		.path {
+			display: block;
+			width: 100%;
+			text-align: left;
+			margin-bottom: 16px;
+			background: #fff
+		}
+
+		.path.selected {
+			border: 2px solid var(--sea);
+			padding: 25px
+		}
+
+		.path-head {
+			display: flex;
+			justify-content: space-between;
+			gap: 12px
+		}
+
+		.path .sub {
+			font-size: 13px
+		}
+
+		.badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			background: #e7f3f5;
+			color: #19586a;
+			border-radius: 7px;
+			padding: 4px 9px;
+			font-size: 12px;
+			white-space: nowrap;
+			height: fit-content
+		}
+
+		.badge.candidate {
+			background: #fff0df;
+			color: #79400c
+		}
+
+		.path-flow {
+			display: flex;
+			align-items: center;
+			gap: 13px;
+			margin-top: 22px
+		}
+
+		.chips {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 7px;
+			flex: 1
+		}
+
+		.chip {
+			border: 1px solid var(--line);
+			border-radius: 9px;
+			padding: 7px 10px;
+			background: #f7fbfd;
+			font-size: 12px
+		}
+
+		.arrow {
+			color: var(--sea);
+			font-size: 25px
+		}
+
+		.destination {
+			background: #eaf5f8;
+			padding: 12px;
+			border-radius: 12px;
+			font-size: 13px;
+			max-width: 150px;
+			font-weight: 700
+		}
+
+		.detail {
+			position: sticky;
+			top: 20px
+		}
+
+		.detail hr {
+			border: 0;
+			border-top: 1px solid var(--line);
+			margin: 22px 0
+		}
+
+		.detail p,
+		.detail li {
+			font-size: 14px
+		}
+
+		.detail ul {
+			padding-left: 20px
+		}
+
+		.detail .btn {
+			width: 100%;
+			font-size: 13px
+		}
+
+		.detail-label {
+			font-size: 11px;
+			letter-spacing: 1px;
+			font-weight: 750;
+			color: var(--sea);
+			margin-bottom: 8px
+		}
+
+		.exposure-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 16px
+		}
+
+		.exposure-card {
+			background: #fff;
+			text-align: left;
+			min-height: 145px;
+			color: var(--ink)
+		}
+
+		.exposure-card h3 {
+			margin-top: 12px;
+			overflow-wrap: anywhere
+		}
+
+		.exposure-card small {
+			color: var(--sea)
+		}
+
+		.recommendations {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 18px
+		}
+
+		.recommendations .number {
+			font-size: 25px;
+			color: var(--sea);
+			font-weight: 800
+		}
+
+		.form-card {
+			max-width: 530px;
+			margin: 20px auto
+		}
+
+		.form-card h1 {
+			font-size: 29px
+		}
+
+		.field {
+			margin-bottom: 20px
+		}
+
+		.field label {
+			display: block;
+			font-size: 14px;
+			font-weight: 700;
+			margin-bottom: 7px
+		}
+
+		.field input {
+			width: 100%;
+			border: 1px solid #bed3dd;
+			border-radius: 11px;
+			background: #fbfdfe;
+			padding: 13px;
+			color: var(--ink)
+		}
+
+		.form-card .btn {
+			width: 100%
+		}
+
+		.check {
+			font-size: 13px;
+			display: flex;
+			gap: 9px;
+			align-items: flex-start;
+			margin: 20px 0
+		}
+
+		.check input {
+			margin-top: 5px
+		}
+
+		.form-help {
+			font-size: 12px;
+			color: var(--muted)
+		}
+
+		.loading-card {
+			max-width: 580px;
+			margin: 65px auto;
+			text-align: center
+		}
+
+		.spinner {
+			width: 56px;
+			height: 56px;
+			border: 5px solid #dcecf2;
+			border-top-color: var(--sea);
+			border-radius: 50%;
+			animation: spin 1s linear infinite;
+			margin: 25px auto
+		}
+
+		.progress-list {
+			list-style: none;
+			text-align: left;
+			padding: 0;
+			margin: 28px 0
+		}
+
+		.progress-list li {
+			padding: 14px;
+			border-bottom: 1px solid var(--line);
+			color: var(--muted)
+		}
+
+		.progress-list li.current {
+			color: var(--sea);
+			font-weight: 750
+		}
+
+		.empty {
+			text-align: center;
+			padding: 65px 25px
+		}
+
+		.empty h2 {
+			margin-top: 12px
+		}
+
+		.demo-controls {
+			display: flex;
+			align-items: center;
+			gap: 7px;
+			flex-wrap: wrap;
+			margin-top: 30px;
+			font-size: 11px;
+			color: var(--muted)
+		}
+
+		.demo-controls button {
+			background: white;
+			border: 1px solid var(--line);
+			color: var(--muted);
+			border-radius: 7px;
+			padding: 5px 9px;
+			font-size: 11px
+		}
+
+		.demo-controls button.active {
+			border-color: var(--sea);
+			color: var(--sea)
+		}
+
+		footer {
+			border-top: 1px solid var(--line);
+			padding: 25px 0;
+			color: var(--muted);
+			font-size: 12px
+		}
+
+		footer .wrap {
+			display: flex;
+			justify-content: space-between;
+			gap: 20px
+		}
+
+		dialog {
+			border: 1px solid var(--line);
+			border-radius: 20px;
+			padding: 28px;
+			width: min(600px, calc(100% - 32px));
+			color: var(--ink);
+			max-height: 85vh
+		}
+
+		dialog::backdrop {
+			background: #183b4e66
+		}
+
+		.modal-head {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 15px
+		}
+
+		.close {
+			background: #edf5f8;
+			border-radius: 8px;
+			padding: 7px 12px;
+			color: var(--ink)
+		}
+
+		.evidence {
+			background: #f1f7fa;
+			border-left: 3px solid var(--sea);
+			padding: 14px;
+			font-size: 14px;
+			margin: 14px 0
+		}
+
+		.source-block {
+			border-top: 1px solid var(--line);
+			padding-top: 16px;
+			margin-top: 16px
+		}
+
+		.source-block a {
+			font-size: 12px;
+			overflow-wrap: anywhere
+		}
+
+		.hidden {
+			display: none !important
+		}
+
+		@keyframes spin {
+			to {
+				transform: rotate(360deg)
+			}
+		}
+
+		@media(prefers-reduced-motion:reduce) {
+			* {
+				animation: none !important
+			}
+		}
+
+		@media(max-width:850px) {
+			.hero {
+				gap: 25px
+			}
+
+			.hero h1 {
+				font-size: 39px
+			}
+
+			.ocean {
+				min-height: 300px
+			}
+
+			.result-grid {
+				grid-template-columns: 1fr
+			}
+
+			.detail {
+				position: static
+			}
+
+			.exposure-grid {
+				grid-template-columns: repeat(2, 1fr)
+			}
+
+			.intro {
+				flex-direction: column
+			}
+
+			.subject {
+				text-align: left
+			}
+
+			.stats {
+				gap: 10px
+			}
+
+			.stat {
+				padding: 17px
+			}
+
+			.steps-grid {
+				grid-template-columns: 1fr
+			}
+		}
+
+		@media(max-width:600px) {
+			.wrap {
+				padding: 0 18px
+			}
+
+			header {
+				height: 75px
+			}
+
+			.brand strong {
+				font-size: 21px
+			}
+
+			.brand small {
+				font-size: 8px
+			}
+
+			.brand-icon {
+				width: 36px;
+				height: 36px
+			}
+
+			.nav {
+				gap: 8px
+			}
+
+			.nav .textbtn {
+				display: none
+			}
+
+			.btn {
+				padding: 10px 15px
+			}
+
+			.page {
+				padding-top: 30px
+			}
+
+			h1 {
+				font-size: 28px
+			}
+
+			.hero {
+				grid-template-columns: 1.1fr;
+				padding: 20px 0 35px
+			}
+
+			.hero h1 {
+				font-size: 38px
+			}
+
+			.ocean {
+				min-height: 270px
+			}
+
+			.stats {
+				grid-template-columns: repeat(2, 1fr)
+			}
+
+			.tabs {
+				gap: 20px
+			}
+
+			.tab {
+				font-size: 14px
+			}
+
+			.card {
+				padding: 20px
+			}
+
+			.path.selected {
+				padding: 19px
+			}
+
+			.path-flow {
+				flex-wrap: wrap
+			}
+
+			.destination {
+				max-width: none
+			}
+
+			.path-head {
+				flex-wrap: wrap
+			}
+
+			.exposure-grid,
+			.recommendations {
+				grid-template-columns: 1fr
+			}
+
+			footer .wrap {
+				flex-direction: column;
+				gap: 5px
+			}
+		}
+
+		.brand-logo {
+			display: block;
+			height: 50px;
+			width: auto;
+			max-width: none;
+			max-height: none;
+			object-fit: contain;
+		}
+
+		@media (max-width: 600px) {
+			.brand-logo {
+				height: 50px;
+				max-width: 50px;
+			}
+		}
+
+		.beach-cat {
+			position: absolute;
+			/* 스크롤을 내려도 왼쪽 위 모래사장에 고정 */
+			top: 20px;
+			/* 위쪽 여백 */
+			left: 40px;
+			/* 왼쪽 여백 */
+			width: 220px;
+			/* 원하는 전체 크기는 width 값으로만 조절 (예: 180px) */
+			height: auto;
+			/* 비율에 맞게 고정되도록 auto로 변경 */
+			z-index: 999;
+			/* 배경 및 헤더 위에 얹어지도록 설정 */
+			pointer-events: none;
+			/* 고양이 클릭 시 뒤쪽 버튼/링크 클릭을 방해하지 않음 */
+		}
+
+	
+		
+	</style>
+</head>
+
+<body>
+	
+	<header>
+		<div class="wrap">
+			<button class="brand" data-go="home" aria-label="낚이지마! 홈">
+				<img src="./logo.png" alt="" class="brand-logo">
+
+				<span>
+					<strong>낚이지마!</strong>
+					<small>DON'T BE PHISHED</small>
+				</span>
+			</button>
+			<nav class="nav" aria-label="주 메뉴">
+				<button class="btn" data-go="home">서비스 소개</button>
+				<button class="btn" data-go="input">검사 시작</button>
+			</nav>
+		</div>
+	</header>
+	<main class="wrap">
+		<section class="page active" id="home">
+			<div class="hero">
+				<div>
+					<div class="eyebrow">A LITTLE MORE AWARE. A LITTLE SAFER.</div>
+					<h1 style="margin-top:18px">
+						내 공개 정보가<br>
+						누군가의 미끼가<br>되지 않도록.</h1>
+					<p class="muted">
+						인터넷에 공개된 내 정보를 살펴보고,<br>정보의 연결이 만드는 잠재적 사칭 위험을 확인하세요.</p>
+					<button class="btn" data-go="input">내 공개 정보 확인하기 →</button>
+					<p class="form-help" style="margin-top:14px">대학교 연구실 구성원을 위한 공개 정보 점검</p>
+				</div>
+				
+
 			</div>
-		</header>
-		<main class="wrap">
-			<section class="page active" id="home">
-				<div class="hero">
-					<div>
-						<div class="eyebrow">A LITTLE MORE AWARE. A LITTLE SAFER.</div>
-						<h1 style="margin-top:18px">
-							내 공개 정보가<br>
-								누군가의 미끼가<br>되지 않도록.</h1>
-						<p class="muted">
-							인터넷에 공개된 내 정보를 살펴보고,<br>정보의 연결이 만드는 잠재적 사칭 위험을 확인하세요.</p>
-						<button class="btn" data-go="input">내 공개 정보 확인하기 →</button>
-						<p class="form-help" style="margin-top:14px">대학교 연구실 구성원을 위한 공개 정보 점검</p>
-					</div>
-					<div class="hero-illustration">
-						<img
-						  class="intro-image"
-						  src="./images/intro.jpg"
-						  alt="고양이와 물고기로 표현한 낚이지마 서비스 소개"
-  >
-						</div>
-
-				</div>
-				<div class="steps-grid">
-					<article class="card">
-						<div class="step-number">01 / DISCOVER</div>
-						<h2>흩어진 공개 정보 찾기</h2>
-						<p class="sub">공개 웹 페이지에서 나와 관련된 정보를 확인합니다.</p>
-					</article>
-					<article class="card">
-						<div class="step-number">02 / CONNECT</div>
-						<h2>정보의 연결 이해하기</h2>
-						<p class="sub">어떤 정보 조합이 사칭에 활용될 수 있는지 살펴봅니다.</p>
-					</article>
-					<article class="card">
-						<div class="step-number">03 / PREPARE</div>
-						<h2>대응 방법 확인하기</h2>
-						<p class="sub">원문 근거와 함께 공개 범위 및 확인 방법을 검토합니다.</p>
-					</article>
-				</div>
-			</section>
-			<section class="page" id="input">
-				<div class="card form-card">
-			
-					<h1 style="margin-top:18px">내 공개 정보 확인하기</h1>
-					<p class="sub">이름, 대학교, 이메일을 입력해주세요.</p>
-					<form id="subjectForm">
-						<div class="field">
-							<label for="name">이름 *</label>
-							<input id="name" name="name" required="" maxlength="80" autocomplete="name" placeholder="홍길동">
-						</div>
-						<div class="field">
-							<label for="organization">대학교 *</label>
-							<input id="organization" name="organization" required="" maxlength="120" autocomplete="organization" placeholder="예시대학교">
-						</div>
-						<div class="field">
-							<label for="email">이메일 *</label>
-							<input id="email" name="email" type="email" required="" maxlength="254" autocomplete="email" placeholder="gildong@example.com">
-						</div>
-						<p class="form-help">이메일은 형식만 확인하며 실제 소유 여부는 인증하지 않습니다.</p>
-						<label class="check">
-							<input type="checkbox" required="">
-								<span>본인 또는 검사에 동의한 대상의 정보만 입력합니다.</span>
-						</label>
-						<button class="btn" type="submit">분석 시작 →</button>
-						<button class="textbtn" type="button" id="fillSample" style="width:100%;margin-top:12px">가상 예시 정보 채우기</button>
-						<p class="form-help" id="formError" role="alert"></p>
-					</form>
-				</div>
-			</section>
-			<section class="page" id="loading" aria-live="polite">
-				<div class="card loading-card">
-					<span class="tag demo">분석 요청 중</span>
-					<div class="spinner" aria-hidden="true"></div>
-					<h1 style="font-size:27px">인터넷 바다를 살펴보는 중</h1>
-					<p class="sub">서버 응답을 기다리는 중입니다.</p>
-					<ol class="progress-list">
-						<li class="current">01　관련 페이지 찾기</li>
-						<li>02　본인 정보와 원문 근거 확인</li>
-						<li>03　정보 조합과 사칭 경로 분석</li>
-					</ol>
-					<button class="textbtn" id="skipLoading">결과 바로 보기 →</button>
-				</div>
-			</section>
-			<section class="page" id="result">
-				<div class="intro">
-					<div>
-						<div style="margin-bottom:12px">
-							<span class="tag demo">데모 데이터</span>
-						</div>
-						<h1>공개 정보의 연결을 확인했어요</h1>
-						<p class="sub">웹에 공개된 정보와 잠재적 사칭 경로를 살펴보세요.</p>
-					</div>
-					<div class="subject">
-						<strong id="subjectLabel"></strong>
-						<br>
-							<span id="emailLabel" class="muted"></span>
-					</div>
-				</div>
-				<div class="notice" id="resultNotice" role="status">이 결과는 실제 공격 발생 여부나 공격 성공 확률을 의미하지 않습니다.</div>
-				<div class="stats" id="stats"></div>
-				<div id="normalResult">
-					<div class="tabs" role="tablist" aria-label="분석 결과">
-						<button class="tab" id="tab-exposures" role="tab" aria-controls="resultPanel" aria-selected="false" data-tab="exposures">
-							공개 정보 <small>6</small>
-						</button>
-						<button class="tab" id="tab-paths" role="tab" aria-controls="resultPanel" aria-selected="true" data-tab="paths">
-							위험 경로 <small>2</small>
-						</button>
-						<button class="tab" id="tab-actions" role="tab" aria-controls="resultPanel" aria-selected="false" data-tab="actions">대응 방법</button>
-					</div>
-					<div id="resultPanel" role="tabpanel" aria-labelledby="tab-paths"></div>
-				</div>
-				<div id="emptyResult" class="card empty hidden"></div>
-				<div class="demo-controls">
-					<span>발표용 상태 전환</span>
-					<button class="active" data-mode="normal">정상 결과</button>
-					<button data-mode="partial">부분 성공</button>
-					<button data-mode="empty">공개 정보 0건</button>
-					<button data-mode="noPaths">위험 경로 0건</button>
-					<button data-mode="failed">전체 실패</button>
-				</div>
-			</section>
-		</main>
-		<footer>
-			<div class="wrap">
-				<span>낚이지마! · Don'tBePhished</span>
-				<span>공개 정보의 연결을 이해하고, 사칭 위험에 대비하세요.</span>
+			<div class="steps-grid">
+				<article class="card point-frame">
+					<div class="step-number">01 / DISCOVER</div>
+					<h2>흩어진 공개 정보 찾기</h2>
+					<p class="sub">공개 웹 페이지에서 나와 관련된 정보를 확인합니다.</p>
+				</article>
+				<article class="card point-frame">
+					<div class="step-number">02 / CONNECT</div>
+					<h2>정보의 연결 이해하기</h2>
+					<p class="sub">어떤 정보 조합이 사칭에 활용될 수 있는지 살펴봅니다.</p>
+				</article>
+				<article class="card point-frame">
+					<div class="step-number">03 / PREPARE</div>
+					<h2>대응 방법 확인하기</h2>
+					<p class="sub">원문 근거와 함께 공개 범위 및 확인 방법을 검토합니다.</p>
+				</article>
 			</div>
-		</footer>
-		<dialog id="sourceDialog" aria-labelledby="dialogTitle">
-			<div class="modal-head">
-				<h2 id="dialogTitle" style="margin:0">공개 정보와 원문 근거</h2>
-				<button class="close" id="closeDialog" aria-label="상세 창 닫기">닫기</button>
+		</section>
+		<section class="page" id="input">
+			<div class="card form-card">
+
+				<h1 style="margin-top:18px">내 공개 정보 확인하기</h1>
+				<p class="sub">이름, 대학교, 이메일을 입력해주세요.</p>
+				<form id="subjectForm">
+					<div class="field">
+						<label for="name">이름 *</label>
+						<input id="name" name="name" required="" maxlength="80" autocomplete="name" placeholder="홍길동">
+					</div>
+					<div class="field">
+						<label for="organization">대학교 *</label>
+						<input id="organization" name="organization" required="" maxlength="120"
+							autocomplete="organization" placeholder="예시대학교">
+					</div>
+					<div class="field">
+						<label for="email">이메일 *</label>
+						<input id="email" name="email" type="email" required="" maxlength="254" autocomplete="email"
+							placeholder="gildong@example.com">
+					</div>
+					<p class="form-help">이메일은 형식만 확인하며 실제 소유 여부는 인증하지 않습니다.</p>
+					<label class="check">
+						<input type="checkbox" required="">
+						<span>본인 또는 검사에 동의한 대상의 정보만 입력합니다.</span>
+					</label>
+					<button class="btn" type="submit">분석 시작 →</button>
+					<button class="textbtn" type="button" id="fillSample" style="width:100%;margin-top:12px">가상 예시 정보
+						채우기</button>
+					<p class="form-help" id="formError" role="alert"></p>
+				</form>
 			</div>
-			<p class="form-help">출처와 원문은 UI 시연을 위한 가상 예시입니다.</p>
-			<div id="dialogBody"></div>
-		</dialog>
-		<script>
-			// UI 전용 데모: 네트워크 요청, 실제 검색 및 저장 기능이 없다.
-			// 기존 로고는 첨부되지 않아 임시 텍스트 브랜드를 사용한다.
-			// 아래 fixture는 프런트엔드 화면 모델이다. 실제 DFSAResult 계약을 대체하지 않는다.
-			const demoData={schema_version:'v0.1',subject:{name:'홍길동',organization:'예시대학교',email:'gildong@example.com'},exposures:[{id:'exp_001',type:'소속',value:'예시대학교 AI 연구실',source:'https://example.com/lab',evidence:'홍길동은 예시대학교 AI 연구실 소속입니다.'},{id:'exp_002',type:'관계',value:'지도교수 김예시',source:'https://example.com/lab',evidence:'홍길동 · 지도교수: 김예시'},{id:'exp_003',type:'연락처',value:'gildong@example.com',source:'https://example.com/profile',evidence:'이메일: gildong@example.com'},{id:'exp_004',type:'관심 분야',value:'자연어 처리',source:'https://example.com/profile',evidence:'홍길동의 관심 분야는 자연어 처리입니다.'},{id:'exp_005',type:'활동',value:'학술 세미나 발표',source:'https://example.com/seminar',evidence:'홍길동 · 학술 세미나 발표자'},{id:'exp_006',type:'기본 정보',value:'홍길동',source:'https://example.com/lab',evidence:'연구실 구성원: 홍길동'}],paths:[{title:'연구실 관계자 사칭',status:'근거 확인',description:'필요한 정보 조합과 추가 근거가 확인된 경로',ids:['exp_001','exp_002','exp_003'],reason:'공개된 연구실 소속, 지도교수 관계, 연락처가 동일 사용자에게 연결되어 있습니다.',actions:['관계자를 사칭한 연락은 별도 공식 채널로 확인하세요.','관계 정보와 연락처의 공개 범위를 검토하세요.']},{title:'학술 활동 관련 사칭',status:'후보 경로',description:'일부 공개 정보가 조건에 해당하는 경로',ids:['exp_001','exp_004'],reason:'공개된 소속과 관심 분야가 연결되어 학술 주제를 활용한 사칭 경로의 조건에 해당합니다.',actions:['학술 행사나 논문 관련 연락은 공식 홈페이지와 대조하세요.','낯선 링크와 첨부파일은 발신자를 확인한 뒤 열어보세요.']}]};
-			let tab='paths',selected=0,mode='normal',timers=[];
-			const $=id=>document.getElementById(id);
-			const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-			function showPage(id){timers.forEach(clearTimeout);timers=[];document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id===id));document.querySelector('header .btn').textContent=id==='result'?'다시 검사':'검사 시작';window.scrollTo(0,0);if(id==='result')renderResult();}
-			document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
-			$('fillSample').onclick=()=>{for(const k of ['name','organization','email'])$(k).value=demoData.subject[k];};
-let analysisInProgress = false;
+		</section>
+		<section class="page" id="loading" aria-live="polite">
+			<div class="card loading-card">
+				<span class="tag demo">분석 요청 중</span>
+				<div class="spinner" aria-hidden="true"></div>
+				<h1 style="font-size:27px">인터넷 바다를 살펴보는 중</h1>
+				<p class="sub">서버 응답을 기다리는 중입니다.</p>
+				<ol class="progress-list">
+					<li class="current">01　관련 페이지 찾기</li>
+					<li>02　본인 정보와 원문 근거 확인</li>
+					<li>03　정보 조합과 사칭 경로 분석</li>
+				</ol>
+				<button class="textbtn" id="skipLoading">결과 바로 보기 →</button>
+			</div>
+		</section>
+		<section class="page" id="result">
+			<div class="intro">
+				<div>
+					<div style="margin-bottom:12px">
+						<span class="tag">실제 분석 결과</span>
+					</div>
+					<h1>공개 정보의 연결을 확인했어요</h1>
+					<p class="sub">웹에 공개된 정보와 잠재적 사칭 경로를 살펴보세요.</p>
+				</div>
+				<div class="subject">
+					<strong id="subjectLabel"></strong>
+					<br>
+					<span id="emailLabel" class="muted"></span>
+				</div>
+			</div>
+			<div class="notice" id="resultNotice" role="status">이 결과는 실제 공격 발생 여부나 공격 성공 확률을 의미하지 않습니다.</div>
+			<div class="stats" id="stats"></div>
+			<div id="normalResult">
+				<div class="tabs" role="tablist" aria-label="분석 결과">
+					<button class="tab" id="tab-exposures" role="tab" aria-controls="resultPanel" aria-selected="false"
+						data-tab="exposures">
+						공개 정보 <small>6</small>
+					</button>
+					<button class="tab" id="tab-paths" role="tab" aria-controls="resultPanel" aria-selected="true"
+						data-tab="paths">
+						위험 경로 <small>2</small>
+					</button>
+					<button class="tab" id="tab-actions" role="tab" aria-controls="resultPanel" aria-selected="false"
+						data-tab="actions">대응 방법</button>
+				</div>
+				<div id="resultPanel" role="tabpanel" aria-labelledby="tab-paths"></div>
+			</div>
+			<div id="emptyResult" class="card empty hidden"></div>
+			<div class="demo-controls">
+				<span>발표용 상태 전환</span>
+				<button class="active" data-mode="normal">정상 결과</button>
+				<button data-mode="partial">부분 성공</button>
+				<button data-mode="empty">공개 정보 0건</button>
+				<button data-mode="noPaths">위험 경로 0건</button>
+				<button data-mode="failed">전체 실패</button>
+			</div>
+		</section>
+	</main>
+	<footer>
+		<div class="wrap">
+			<span>낚이지마! · Don'tBePhished</span>
+			<span>공개 정보의 연결을 이해하고, 사칭 위험에 대비하세요.</span>
+		</div>
+	</footer>
+	<dialog id="sourceDialog" aria-labelledby="dialogTitle">
+		<div class="modal-head">
+			<h2 id="dialogTitle" style="margin:0">공개 정보와 원문 근거</h2>
+			<button class="close" id="closeDialog" aria-label="상세 창 닫기">닫기</button>
+		</div>
+		<p class="form-help">출처와 원문은 UI 시연을 위한 가상 예시입니다.</p>
+		<div id="dialogBody"></div>
+	</dialog>
+	<script>
+		// UI 전용 데모: 네트워크 요청, 실제 검색 및 저장 기능이 없다.
+		// 기존 로고는 첨부되지 않아 임시 텍스트 브랜드를 사용한다.
+		// 아래 fixture는 프런트엔드 화면 모델이다. 실제 DFSAResult 계약을 대체하지 않는다.
+		const demoData = { schema_version: 'v0.1', subject: { name: '홍길동', organization: '예시대학교', email: 'gildong@example.com' }, exposures: [{ id: 'exp_001', type: '소속', value: '예시대학교 AI 연구실', source: 'https://example.com/lab', evidence: '홍길동은 예시대학교 AI 연구실 소속입니다.' }, { id: 'exp_002', type: '관계', value: '지도교수 김예시', source: 'https://example.com/lab', evidence: '홍길동 · 지도교수: 김예시' }, { id: 'exp_003', type: '연락처', value: 'gildong@example.com', source: 'https://example.com/profile', evidence: '이메일: gildong@example.com' }, { id: 'exp_004', type: '관심 분야', value: '자연어 처리', source: 'https://example.com/profile', evidence: '홍길동의 관심 분야는 자연어 처리입니다.' }, { id: 'exp_005', type: '활동', value: '학술 세미나 발표', source: 'https://example.com/seminar', evidence: '홍길동 · 학술 세미나 발표자' }, { id: 'exp_006', type: '기본 정보', value: '홍길동', source: 'https://example.com/lab', evidence: '연구실 구성원: 홍길동' }], paths: [{ title: '연구실 관계자 사칭', status: '근거 확인', description: '필요한 정보 조합과 추가 근거가 확인된 경로', ids: ['exp_001', 'exp_002', 'exp_003'], reason: '공개된 연구실 소속, 지도교수 관계, 연락처가 동일 사용자에게 연결되어 있습니다.', actions: ['관계자를 사칭한 연락은 별도 공식 채널로 확인하세요.', '관계 정보와 연락처의 공개 범위를 검토하세요.'] }, { title: '학술 활동 관련 사칭', status: '후보 경로', description: '일부 공개 정보가 조건에 해당하는 경로', ids: ['exp_001', 'exp_004'], reason: '공개된 소속과 관심 분야가 연결되어 학술 주제를 활용한 사칭 경로의 조건에 해당합니다.', actions: ['학술 행사나 논문 관련 연락은 공식 홈페이지와 대조하세요.', '낯선 링크와 첨부파일은 발신자를 확인한 뒤 열어보세요.'] }] };
+		let liveResult = null;
+		let tab = 'paths', selected = 0, mode = 'normal', timers = [];
+		const $ = id => document.getElementById(id);
+		const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function showPage(id) { 
+	timers.forEach(clearTimeout); 
+	timers = []; 
+	document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === id)); 
+	window.scrollTo(0, 0); 
+	if (id === 'result') renderResult(); 
+}		document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showPage(b.dataset.go)));
+		$('fillSample').onclick = () => { for (const k of ['name', 'organization', 'email']) $(k).value = demoData.subject[k]; };
+		let analysisInProgress = false;
 
-$('subjectForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+		$('subjectForm').addEventListener('submit', async (e) => {
+			e.preventDefault();
 
-  if (analysisInProgress) return;
+			if (analysisInProgress) return;
 
-  const form = $('subjectForm');
-  const values = {};
+			const form = $('subjectForm');
+			const values = {};
 
-  for (const key of ['name', 'organization', 'email']) {
-    values[key] = $(key).value.trim();
+			for (const key of ['name', 'organization', 'email']) {
+				values[key] = $(key).value.trim();
 
-    if (!values[key]) {
-      $('formError').textContent = '공백만 입력할 수 없다.';
-      $(key).focus();
-      return;
-    }
-  }
+				if (!values[key]) {
+					$('formError').textContent = '공백만 입력할 수 없다.';
+					$(key).focus();
+					return;
+				}
+			}
 
-  if (!form.reportValidity()) return;
+			if (!form.reportValidity()) return;
 
-  $('formError').textContent = '';
+			$('formError').textContent = '';
 
-  const submitButton = form.querySelector('[type="submit"]')
-    || form.querySelector('button:not([type])');
+			const submitButton = form.querySelector('[type="submit"]')
+				|| form.querySelector('button:not([type])');
 
-  const originalText = submitButton?.textContent;
+			const originalText = submitButton?.textContent;
 
-  analysisInProgress = true;
+			analysisInProgress = true;
 
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = '요청 중…';
-  }
+			if (submitButton) {
+				submitButton.disabled = true;
+				submitButton.textContent = '요청 중…';
+			}
 
-  // 실제 진행 상태를 제공하는 API가 아니므로 단계별 진행을 연출하지 않는다.
-  document.querySelectorAll('.progress-list li').forEach((li) => {
-    li.classList.remove('current');
-  });
+			// 실제 진행 상태를 제공하는 API가 아니므로 단계별 진행을 연출하지 않는다.
+			document.querySelectorAll('.progress-list li').forEach((li) => {
+				li.classList.remove('current');
+			});
 
-  showPage('loading');
+			showPage('loading');
 
-  try {
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(values),
-    });
+			try {
+				const response = await fetch('/api/analyze', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+					},
+					body: JSON.stringify(values),
+				});
 
-    const data = await response.json().catch(() => null);
+				const data = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      let message = '분석 요청을 처리하지 못했다.';
+				if (!response.ok) {
+					let message = '분석 요청을 처리하지 못했다.';
 
-      if (response.status === 503) {
-        message = data?.detail?.message
-          || '분석 모듈 연결이 완료되지 않았다.';
-      } else if (response.status === 422) {
-        message = '입력 형식을 확인해줘. 이름·소속·이메일을 다시 확인하면 된다.';
-      } else if (response.status >= 500) {
-        message = '분석 처리 중 서버 오류가 발생했다. 잠시 후 다시 시도해줘.';
-      }
+					if (response.status === 503) {
+						message = data?.detail?.message
+							|| '분석 모듈 연결이 완료되지 않았다.';
+					} else if (response.status === 422) {
+						message = '입력 형식을 확인해줘. 이름·소속·이메일을 다시 확인하면 된다.';
+					} else if (response.status >= 500) {
+						message = '분석 처리 중 서버 오류가 발생했다. 잠시 후 다시 시도해줘.';
+					}
 
-      throw new Error(message);
-    }
+					throw new Error(message);
+				}
 
-    if (!data || typeof data !== 'object') {
-      throw new Error('서버 응답을 읽을 수 없다.');
-    }
+				if (!data || typeof data !== 'object') {
+					throw new Error('서버 응답을 읽을 수 없다.');
+				}
 
-    // 아직 실제 결과 렌더링은 연결하지 않는다.
-    // 개인정보가 포함될 수 있으므로 응답 전체를 콘솔에 출력하지 않는다.
-    showPage('input');
-    $('formError').textContent =
-      'API 응답을 받았다. 실제 결과 화면 연결은 다음 단계에서 진행한다.';
-  } catch (error) {
-    showPage('input');
+				if (!data.summary || typeof data.summary !== 'object') {
+					throw new Error('서버 응답에 분석 통계가 없다.');
+				}
+				liveResult = { data, values };
+				showPage('result');
 
-    $('formError').textContent =
-      error instanceof TypeError
-        ? '서버에 연결하지 못했다. 서버 실행 상태를 확인해줘.'
-        : error instanceof Error
-          ? error.message
-          : '요청 중 오류가 발생했다.';
-  } finally {
-    analysisInProgress = false;
+			} catch (error) {
+				showPage('input');
 
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = originalText;
-    }
-  }
-});
+				$('formError').textContent =
+					error instanceof TypeError
+						? '서버에 연결하지 못했다. 서버 실행 상태를 확인해줘.'
+						: error instanceof Error
+							? error.message
+							: '요청 중 오류가 발생했다.';
+			} finally {
+				analysisInProgress = false;
 
-$('skipLoading').onclick = null;
-$('skipLoading').hidden = true;
-$('skipLoading').classList.add('hidden');
+				if (submitButton) {
+					submitButton.disabled = false;
+					submitButton.textContent = originalText;
+				}
+			}
+		});
 
-document.addEventListener('click', (event) => {
-  if (!analysisInProgress) return;
+		$('skipLoading').onclick = null;
+		$('skipLoading').hidden = true;
+		$('skipLoading').classList.add('hidden');
 
-  if (event.target.closest('[data-go]')) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }
-}, true);
+		document.addEventListener('click', (event) => {
+			if (!analysisInProgress) return;
 
-			$('subjectLabel').textContent=demoData.subject.name+' · '+demoData.subject.organization;$('emailLabel').textContent=demoData.subject.email;
-			function renderResult(){const failed=mode==='failed',empty=mode==='empty',noPaths=mode==='noPaths';const labels=['검색 결과','확인된 출처','공개 정보','위험 경로'];const counts=failed?[null,null,null,null]:empty?[5,0,0,0]:noPaths?[5,3,6,0]:[5,3,6,2];$('stats').innerHTML=labels.map((l,i)=>`<div class="card stat">
-				<span>${l}</span>
-				<strong>
-					${counts[i]===null?'—':counts[i]}<small>${counts[i]===null?'':'개'}</small>
-				</strong>
-			</div>`).join('');$('resultNotice').textContent=mode==='partial'?'일부 페이지 처리에 실패하여 결과가 제한될 수 있습니다. 아래 데이터는 가상 예시이며 실제 공격 발생을 의미하지 않습니다.':'이 결과는 실제 공격 발생 여부나 공격 성공 확률을 의미하지 않습니다.';$('normalResult').classList.toggle('hidden',failed||empty);$('emptyResult').classList.toggle('hidden',!failed&&!empty);if(failed)$('emptyResult').innerHTML='<span class="tag demo">분석 실패</span><h2>분석을 완료하지 못했어요</h2><p class="sub">결과를 확인할 수 없습니다. 정보가 없거나 안전하다는 의미는 아닙니다.</p><button class="btn" data-retry="">다시 시도하기</button>';if(empty)$('emptyResult').innerHTML='<span class="tag">정상 처리 · 확인된 정보 0건</span><h2>이번 검사에서 확인된 공개 정보가 없어요</h2><p class="sub">현재 검색 범위에서 확인하지 못한 결과이며, 공개 정보가 전혀 없다는 의미는 아닙니다.</p><button class="btn secondary" data-retry="">입력 정보 확인하기</button>';$('emptyResult').querySelector('[data-retry]')?.addEventListener('click',()=>showPage('input'));document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('tab-paths').querySelector('small').textContent=noPaths?'0':'2';renderTab();}
-			function renderTab(){document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));$('resultPanel').setAttribute('aria-labelledby','tab-'+tab);if(tab==='exposures'){$('resultPanel').innerHTML='<div class="exposure-grid"> '+demoData.exposures.map(e=>`<button class="card exposure-card" data-exposure="${e.id}">
+			if (event.target.closest('[data-go]')) {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+			}
+		}, true);
+
+		$('subjectLabel').textContent = demoData.subject.name + ' · ' + demoData.subject.organization; $('emailLabel').textContent = demoData.subject.email;
+		function renderResult() {
+			if (!liveResult) return;
+			const { data, values } = liveResult;
+			$('subjectLabel').textContent = `${values.name} · ${values.organization}`;
+			$('emailLabel').textContent = values.email;
+			$('normalResult').classList.add('hidden');
+			document.querySelector('.demo-controls')?.classList.add('hidden');
+			$('emptyResult').classList.remove('hidden');
+			$('emptyResult').textContent = '공개 정보와 위험 경로의 상세 카드는 아직 연결되지 않았습니다.';
+
+			const stats = [
+				['검색 결과', 'search_result_count'],
+				['확인된 출처', 'confirmed_source_count'],
+				['공개 정보', 'total_exposures'],
+				['위험 경로', 'total_risk_paths'],
+			];
+			$('stats').replaceChildren(...stats.map(([label, key]) => {
+				const card = document.createElement('div');
+				card.className = 'card stat';
+				const title = document.createElement('span');
+				title.textContent = label;
+				const count = document.createElement('strong');
+				const value = data.summary[key];
+				count.textContent = key === 'total_risk_paths' && data.stages?.risk_analysis === 'not_started'
+					? '미실행' : Number.isInteger(value) ? `${value}개` : '—';
+				card.append(title, count);
+				return card;
+			}));
+			const status = data.status === 'failed' ? '분석을 완료하지 못했습니다. 표시된 건수는 정보가 없다는 뜻이 아닙니다.'
+				: data.status === 'partial_success' ? '일부 단계가 실패해 결과가 제한될 수 있습니다.'
+					: '이 결과는 실제 공격 발생 여부나 공격 성공 확률을 의미하지 않습니다.';
+			$('resultNotice').textContent = status;
+		}
+		function renderTab() {
+			document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab))); $('resultPanel').setAttribute('aria-labelledby', 'tab-' + tab); if (tab === 'exposures') {
+				$('resultPanel').innerHTML = '<div class="exposure-grid"> ' + demoData.exposures.map(e => `<button class="card exposure-card" data-exposure="${e.id}">
 					<span class="tag">${escapeHtml(e.type)}</span>
 					<h3>${escapeHtml(e.value)}</h3>
 					<small>원문 근거와 출처 보기 ↗</small>
-				</button>`).join('')+'</div>';return;}if(tab==='actions'){const actions=[...new Set(demoData.paths.flatMap(p=>p.actions))];$('resultPanel').innerHTML='<div class="recommendations"> '+actions.map((a,i)=>`<article class="card">
-					<div class="number">0${i+1}</div>
+				</button>`).join('') + '</div>'; return;
+			} if (tab === 'actions') {
+				const actions = [...new Set(demoData.paths.flatMap(p => p.actions))]; $('resultPanel').innerHTML = '<div class="recommendations"> ' + actions.map((a, i) => `<article class="card">
+					<div class="number">0${i + 1}</div>
 					<h3>${escapeHtml(a)}</h3>
 					<p class="sub">공개 정보의 연결을 이해하고, 연락의 진위를 직접 확인하세요.</p>
-				</article>`).join('')+'</div>';return;}if(mode==='noPaths'){$('resultPanel').innerHTML='<div class="card empty"> <span class="tag">위험 경로 0건</span> <h2>현재 분석 규칙에 해당하는 경로가 없어요</h2> <p class="sub"> 모든 사칭 위험이 없거나 완전히 안전하다는 뜻은 아닙니다.<br>공개 정보 탭에서 확인된 정보와 출처를 살펴보세요.</p> </div>';return;}const p=demoData.paths[selected];$('resultPanel').innerHTML=`<div class="result-grid">
+				</article>`).join('') + '</div>'; return;
+			} if (mode === 'noPaths') { $('resultPanel').innerHTML = '<div class="card empty"> <span class="tag">위험 경로 0건</span> <h2>현재 분석 규칙에 해당하는 경로가 없어요</h2> <p class="sub"> 모든 사칭 위험이 없거나 완전히 안전하다는 뜻은 아닙니다.<br>공개 정보 탭에서 확인된 정보와 출처를 살펴보세요.</p> </div>'; return; } const p = demoData.paths[selected]; $('resultPanel').innerHTML = `<div class="result-grid">
 				<div>
-					${demoData.paths.map((path,i)=>`<button class="card path ${i===selected?'selected':''}" data-path="${i}" aria-pressed="${i===selected}">
+					${demoData.paths.map((path, i) => `<button class="card path ${i === selected ? 'selected' : ''}" data-path="${i}" aria-pressed="${i === selected}">
 						<div class="path-head">
 							<h2>${path.title}</h2>
-							<span class="badge ${i?'candidate':''}">${i?'◇':'✓'} ${path.status}</span>
+							<span class="badge ${i ? 'candidate' : ''}">${i ? '◇' : '✓'} ${path.status}</span>
 						</div>
 						<p class="sub">${path.description}</p>
 						<div class="path-flow">
 							<div class="chips">
-								${path.ids.map(id=>`<span class="chip">${escapeHtml(demoData.exposures.find(x=>x.id===id).value)}</span>`).join('')}
+								${path.ids.map(id => `<span class="chip">${escapeHtml(demoData.exposures.find(x => x.id === id).value)}</span>`).join('')}
 							</div>
 							<span class="arrow" aria-hidden="true">→</span>
 							<span class="destination">${path.title}</span>
@@ -366,35 +1382,45 @@ document.addEventListener('click', (event) => {
 				<aside class="card detail">
 					<div class="detail-label">SELECTED PATH</div>
 					<h2>${p.title}</h2>
-					<span class="badge ${selected?'candidate':''}">${p.status}</span>
-					<p class="sub" style="margin-top:13px">${selected?'일부 정보가 분석 규칙의 조건에 해당합니다.':'필요한 정보 조합과 추가 근거가 확인되었습니다.'} 실제 공격이 발생했다는 뜻은 아닙니다.</p>
+					<span class="badge ${selected ? 'candidate' : ''}">${p.status}</span>
+					<p class="sub" style="margin-top:13px">${selected ? '일부 정보가 분석 규칙의 조건에 해당합니다.' : '필요한 정보 조합과 추가 근거가 확인되었습니다.'} 실제 공격이 발생했다는 뜻은 아닙니다.</p>
 					<hr>
 						<h3>판단 근거</h3>
 						<p>${p.reason}</p>
 						<h3>연결된 공개 정보</h3>
 						<ul>
-							${p.ids.map(id=>`<li>${escapeHtml(demoData.exposures.find(x=>x.id===id).value)}</li>`).join('')}
+							${p.ids.map(id => `<li>${escapeHtml(demoData.exposures.find(x => x.id === id).value)}</li>`).join('')}
 						</ul>
 						<hr>
 							<h3>대응 방법</h3>
 							<ul>
-								${p.actions.map(a=>`<li>${a}</li>`).join('')}
+								${p.actions.map(a => `<li>${a}</li>`).join('')}
 							</ul>
 							<button class="btn secondary" data-path-sources="">연결된 정보와 출처 보기 ↗</button>
 				</aside>
-			</div>`;}
-			document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;renderTab();});
-			document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;renderResult();});
-			$('resultPanel').addEventListener('click',e=>{const path=e.target.closest('[data-path]');if(path){selected=Number(path.dataset.path);renderTab();return;}const exp=e.target.closest('[data-exposure]');if(exp)openSources([exp.dataset.exposure]);if(e.target.closest('[data-path-sources]'))openSources(demoData.paths[selected].ids);});
-			function openSources(ids){$('dialogBody').innerHTML=ids.map(id=>{const e=demoData.exposures.find(x=>x.id===id);return `<section class="source-block">
+			</div>`;
+		}
+		document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderTab(); });
+		document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { mode = b.dataset.mode; renderResult(); });
+		$('resultPanel').addEventListener('click', e => { const path = e.target.closest('[data-path]'); if (path) { selected = Number(path.dataset.path); renderTab(); return; } const exp = e.target.closest('[data-exposure]'); if (exp) openSources([exp.dataset.exposure]); if (e.target.closest('[data-path-sources]')) openSources(demoData.paths[selected].ids); });
+		function openSources(ids) {
+			$('dialogBody').innerHTML = ids.map(id => {
+				const e = demoData.exposures.find(x => x.id === id); return `<section class="source-block">
 				<span class="tag">${escapeHtml(e.type)}</span>
 				<h3 style="margin-top:10px">${escapeHtml(e.value)}</h3>
 				<div class="evidence">“${escapeHtml(e.evidence)}”</div>
 				<a href="${e.source}" target="_blank" rel="noopener noreferrer">${e.source} ↗</a>
 				<p class="form-help">실제 근거가 아닌 가상 예시 출처</p>
-			</section>`;}).join('');$('sourceDialog').showModal();}
-			$('closeDialog').onclick=()=>$('sourceDialog').close();$('sourceDialog').addEventListener('click',e=>{if(e.target===$('sourceDialog')){const r=$('sourceDialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>
-				r.right||e.clientY<r.top||e.clientY>r.bottom)$('sourceDialog').close();}});
-</script>
-	</body>
+			</section>`;
+			}).join(''); $('sourceDialog').showModal();
+		}
+		$('closeDialog').onclick = () => $('sourceDialog').close(); $('sourceDialog').addEventListener('click', e => {
+			if (e.target === $('sourceDialog')) {
+				const r = $('sourceDialog').getBoundingClientRect(); if (e.clientX < r.left || e.clientX >
+					r.right || e.clientY < r.top || e.clientY > r.bottom) $('sourceDialog').close();
+			}
+		});
+	</script>
+</body>
+
 </html>

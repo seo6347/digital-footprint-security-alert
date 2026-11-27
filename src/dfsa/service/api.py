@@ -10,16 +10,14 @@ from dfsa.service import orchestrator
 
 
 def configure_modules() -> None:
-    """Connect A/B. Connect C here after confirming its public function path."""
+    """Connect Modules A, B, and C to the orchestrator."""
     from dfsa.modules.search import run_search
     from dfsa.modules.profiling import run_profiling
+    from dfsa.modules.risk.engine import run_risk
 
     orchestrator.run_search = run_search
     orchestrator.run_profiling = run_profiling
-
-    # Once confirmed, add the real Module C import and assignment here:
-    # from dfsa.modules.risk.engine import run_risk
-    # orchestrator.run_risk = run_risk
+    orchestrator.run_risk = run_risk
 
 
 def create_app(*, configure: bool = True) -> FastAPI:
@@ -46,6 +44,7 @@ def create_app(*, configure: bool = True) -> FastAPI:
 
     @app.post("/api/analyze", response_model=DFSAResult)
     def analyze(subject: Subject):
+        print("[DFSA] analyze 진입", flush=True)
         # This endpoint promises the full pipeline. Never simulate a missing C.
         if any(
             runner is orchestrator._not_connected
@@ -62,11 +61,14 @@ def create_app(*, configure: bool = True) -> FastAPI:
                     "message": "분석 모듈 연결이 완료되지 않았다.",
                 },
             )
-
+            
         try:
-            return orchestrator.run_pipeline(subject)
-        except Exception:
-            # Do not return exception messages, credentials or tracebacks to clients.
+            print("[DFSA] 파이프라인 시작", flush=True)
+            result = orchestrator.run_pipeline(subject)
+            print("[DFSA] 파이프라인 종료", flush=True)
+            return result
+        except Exception as exc:
+            print(f"[DFSA] 파이프라인 예외: {type(exc).__name__}", flush=True)
             return JSONResponse(
                 status_code=500,
                 content={
@@ -76,6 +78,7 @@ def create_app(*, configure: bool = True) -> FastAPI:
                     }
                 },
             )
+
 
     frontend_dir = Path(__file__).resolve().parents[3] / "frontend"
 
