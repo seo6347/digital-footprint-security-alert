@@ -75,6 +75,7 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `tests/modules/explorer/` | Fetch, URL Policy, Parsing 회귀 테스트 — 서동균 | 🟡 |
 | `frontend/` | 예정: Web UI — 정유채, 기술·구현 상세 Owner 재량 | 🟡 |
 | `src/dfsa/modules/risk/`             | Module C 구현 위치 — 강영림 담당                         | 🟡       |
+| `src/dfsa/modules/risk/analysis.py` | Module C v0.2 분석 진입점 (`run_analysis`) — 강영림 담당 | 🟡       |
 | `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
 | `src/dfsa/service/__init__.py`       | Public `run_pipeline` import 진입점                      | 🟡       |
 | `src/dfsa/service/orchestrator.py`   | 요청 변환, 호출·상태 제어, 오류·결과 조합 및 Module callable 연결 | 🟡       |
