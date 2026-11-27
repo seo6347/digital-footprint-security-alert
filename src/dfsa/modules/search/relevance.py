@@ -10,9 +10,8 @@ import re
 import unicodedata
 from urllib.parse import parse_qsl, unquote, urlsplit
 
-
-from dfsa._v01.contracts.common import Subject
-from dfsa._v01.contracts.search import Relevance
+from dfsa.contracts.common import Subject
+from dfsa.contracts.search import Relevance
 
 
 def _normalize_text(value: str) -> str:
@@ -38,8 +37,11 @@ def _contains_term(text: str, term: str) -> bool:
     return re.search(pattern, normalized_text) is not None
 
 
-def _contains_exact_email(text: str, email: str) -> bool:
+def _contains_exact_email(text: str, email: str | None) -> bool:
     """Match an email without accepting part of a longer address."""
+    if email is None:
+        return False
+
     normalized_text = _normalize_text(text)
     normalized_email = _normalize_text(email)
 
@@ -62,18 +64,7 @@ def assess_relevance(
     title: str | None = None,
     snippet: str | None = None,
 ) -> Relevance:
-    """Assess preliminary relevance from URL, title, and snippet.
-
-    Policy:
-    - Exact email match -> candidate
-    - Name and organization match -> candidate
-    - Otherwise -> uncertain
-
-    No page fetching or identity verification is performed.
-    """
-        # Parse query values separately so URL separators such as "="
-    # do not interfere with email boundary checks.
-    # parse_qsl already decodes percent-encoded query values.
+    """Assess preliminary relevance from URL, title, and snippet."""
     query_values = [
         value
         for _, value in parse_qsl(
@@ -89,7 +80,6 @@ def assess_relevance(
         *query_values,
     )
 
-
     name_match = any(
         _contains_term(field, subject.name)
         for field in fields
@@ -100,12 +90,13 @@ def assess_relevance(
         for field in fields
     )
 
-    email_exact_match = any(
-        _contains_exact_email(field, str(subject.email))
-        for field in fields
-    )
+    email_exact_match = False
+    if subject.email is not None and subject.email.strip():
+        email_exact_match = any(
+            _contains_exact_email(field, subject.email)
+            for field in fields
+        )
 
-    # Let the existing contract validate reason and status values.
     reasons = []
 
     if name_match:

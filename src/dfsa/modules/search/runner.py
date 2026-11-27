@@ -2,8 +2,8 @@
 
 from datetime import datetime, timezone
 
-from dfsa._v01.contracts.common import ErrorDetail, ModuleStatus
-from dfsa._v01.contracts.search import (
+from dfsa.contracts.common import ErrorDetail, ModuleStatus
+from dfsa.contracts.search import (
     QueryExecution,
     SearchRequest,
     SearchResponse,
@@ -22,7 +22,7 @@ from dfsa.modules.search.provider import (
     SearchProviderError,
     SerpApiProvider,
 )
-from dfsa.modules.search.query_builder import build_queries
+from dfsa.modules.search.query_builder import _quote_term, build_queries
 from dfsa.modules.search.relevance import assess_relevance
 
 
@@ -89,23 +89,27 @@ def run_search(request: SearchRequest) -> SearchResponse:
         )
         return make_response(ModuleStatus("failed"))
 
-    # query_id는 단일 응답 안에서 순서대로 부여한다.
-    planned_queries = [
-        (f"q_{index:03d}", text)
-        for index, text in enumerate(query_texts, start=1)
-    ]
+    # query_id와 input_fields를 단일 응답 안에서 순서대로 부여한다.
+    planned_queries: list[tuple[str, str, list[str]]] = []
+    for index, text in enumerate(query_texts, start=1):
+        query_id = f"q_{index:03d}"
+        if request.subject.email and _quote_term(request.subject.email.strip()) in text:
+            input_fields = ["email"]
+        else:
+            input_fields = ["name", "organization"]
+        planned_queries.append((query_id, text, input_fields))
 
     try:
         provider = SerpApiProvider()
+        provider_name = provider.name if isinstance(getattr(provider, "name", None), str) else "serpapi"
     except SearchProviderError as exc:
-        # API 키 누락 등으로 Provider를 초기화하지 못하면
-        # 실행 예정이던 검색어를 모두 실패로 기록한다.
-        for query_id, text in planned_queries:
+        for query_id, text, input_fields in planned_queries:
             queries.append(
                 QueryExecution(
                     query_id=query_id,
                     text=text,
-                    provider=SerpApiProvider.name,
+                    input_fields=input_fields,
+                    provider="serpapi",
                     status="failed",
                 )
             )
@@ -117,7 +121,7 @@ def run_search(request: SearchRequest) -> SearchResponse:
 
     successful_query_count = 0
 
-    for query_id, text in planned_queries:
+    for query_id, text, input_fields in planned_queries:
         try:
             provider_results = provider.search(text)
         except SearchProviderError as exc:
@@ -125,7 +129,8 @@ def run_search(request: SearchRequest) -> SearchResponse:
                 QueryExecution(
                     query_id=query_id,
                     text=text,
-                    provider=provider.name,
+                    input_fields=input_fields,
+                    provider=provider_name,
                     status="failed",
                 )
             )
@@ -134,15 +139,14 @@ def run_search(request: SearchRequest) -> SearchResponse:
             )
             continue
 
-        # Query 상태는 검색 서비스 호출의 성공 여부를 나타낸다.
-        # 이후 URL 처리 오류는 별도 오류로 기록한다.
         successful_query_count += 1
 
         queries.append(
             QueryExecution(
                 query_id=query_id,
                 text=text,
-                provider=provider.name,
+                input_fields=input_fields,
+                provider=provider_name,
                 status="success",
             )
         )
@@ -179,10 +183,8 @@ def run_search(request: SearchRequest) -> SearchResponse:
         return make_response(ModuleStatus("failed"))
 
     # 위에서 검증한 URL들을 기준으로 중복을 제거한다.
-    # 최초 발견 순서와 각 검색어의 발견 경로를 보존한다.
     merged_results = deduplicate_results(query_results)
 
-    # 관련성 상태로 결과를 제외하지 않고 최초 발견 순서로 선택한다.
     selected_results = merged_results[: request.options.top_k]
 
     results: list[SearchResult] = []
