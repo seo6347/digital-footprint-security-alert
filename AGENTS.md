@@ -86,7 +86,8 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `tests/modules/risk/`                | Module C 동작·오류 처리 테스트 위치 — 강영림 담당          | 🟡       |
 | `tests/fixtures/v02/` | v0.2 단계별 합성 객체와 UI 개발용 결과 JSON | 🟡 |
 | `tests/legacy/` | v0.1 계약 및 Orchestrator 회귀 테스트와 fixture | 🟡 |
-| `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 수동 Live runner | 🟡 |
+| `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 v0.1·v0.2 수동 Live runner | 🟡 |
+| `tests/e2e/live_v02.py` | 승인된 v0.2 단계별 Live 실행 진입점 | 🟡 |
 | `evaluation/README.md`               | v0.1 평가 준비 이력과 v0.2 검증 범위 | 🟡       |
 | `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
 | `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |

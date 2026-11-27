@@ -49,7 +49,7 @@ DFSA/
 │   ├── integration/
 │   ├── fixtures/v02/                # 단계별 합성 Mock과 UI JSON
 │   ├── legacy/                      # v0.1 계약·Orchestrator 회귀 검증
-│   ├── e2e/                         # v0.1 실제 모듈 회귀 및 수동 Live runner
+│   ├── e2e/                         # v0.1 실제 모듈 회귀 및 v0.1·v0.2 Live runner
 │   └── modules/                     # Module별 테스트
 │       ├── search/
 │       ├── explorer/                # Fetch, URL Policy, Parsing 회귀 테스트
@@ -135,6 +135,24 @@ print(result.model_dump_json(indent=2))
 | `zero.json` | A 정상 0건, 후속 단계 미실행 |
 
 `dfsa._v01`은 기존 실행 및 회귀 검증을 위한 임시 영역입니다. 신규 v0.2 개발은 공개 v0.2 진입점을 사용합니다. 전체 모듈의 v0.2 전환과 회귀 검증 이후 레거시 영역 제거를 검토합니다.
+
+## v0.2 단계별 Live 검증
+
+팀이 대상자의 동의와 사이트·외부 서비스 사용을 승인한 로컬 시연에서만 실행합니다. 승인된 대상의 `name`, `organization`, 선택 `email` JSON은 `DFSA_V02_LIVE_SUBJECT_JSON`에, 검색 키는 기존 `SERPAPI_API_KEY`에 설정합니다. 실제 값은 명령줄이나 저장소 파일에 넣지 않습니다.
+
+```powershell
+python tests/e2e/live_v02.py --until search --live --consent-confirmed --scope-approved --site-url https://approved.example.org/research/
+```
+
+`--until`은 `search`, `exploration`, `profiling`, `analysis` 중 하나입니다. 위 연결 표의 실제 callable을 단계가 필요해질 때 불러옵니다. `analysis`는 전체 Orchestrator를 실행합니다. 중간 단계에서 멈출 때도 같은 Orchestrator의 응답 및 참조 검증을 적용합니다. 미연결 단계에서는 `not_connected`와 필요한 callable을 표시합니다. 정상 0건 등으로 후속 단계 입력이 없으면 `not_started`를 유지합니다.
+
+`--site-url`은 정확한 HTTPS 호스트의 한 페이지를 지정합니다. 경로가 `/`로 끝나면 해당 하위 경로를 포함하고, 호스트만 지정하면 전체 호스트 범위가 됩니다. 사이트 승인 범위에는 해당 경로에 필요한 쿼리 변형도 포함되어야 합니다. 검색은 승인된 SerpApi에서 1회 실행하며 사이트 범위에 해당하는 응답만 전달합니다. Explorer의 기존 Fetch 어댑터는 각 HTTP hop에서 범위를 검사하고 검증된 공개 IP에 연결하면서 원래 호스트로 TLS를 검증합니다. HTML 요청 상한은 redirect 포함 40회, 응답당 상한은 2 MiB입니다.
+
+신규 A는 기존 `SerpApiProvider`, Explorer는 기존 `fetch_html`의 기본 opener를 통해 실행기에 연결합니다. 이 로컬 실행기는 검토된 모듈용이며, 기타 직접 네트워크 연결을 막습니다. 학교 LLM API 호출은 승인된 어댑터가 추가될 때까지 현재 실행 경로에서 사용할 수 없습니다.
+
+출력은 단계별 상태·시간·건수·분류 및 안전한 오류 코드의 JSON입니다. 검색어, URL, 개인 값, 원문 HTML, 오류 메시지는 출력하지 않습니다. 종료 코드는 정상 실행 또는 정상 0건 0, 실행·정책 오류나 부분 성공 1, 승인·설정 오류 또는 미연결 2입니다.
+
+실제 네트워크를 사용하지 않는 실행기 회귀 검증은 `python -m pytest tests/e2e/test_live_v02.py`로 실행합니다.
 
 ## 개발 문서
 

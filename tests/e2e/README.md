@@ -2,7 +2,7 @@
 
 ## 현재 실행 경로
 
-저장소 루트에서 `python -m pytest tests/e2e`를 실행한다. v0.1 Orchestrator와 실제 A/B/C를 연결하고 DNS 및 HTTP를 합성 응답으로 대체한다. v0.1 RiskPath의 `evaluation` 필드는 레거시 Contract의 일부로 검증한다.
+v0.1 검증만 실행하려면 저장소 루트에서 `python -m pytest tests/e2e/test_pipeline_offline.py tests/e2e/test_live_preparation.py`를 실행한다. v0.1 Orchestrator와 실제 A/B/C를 연결하고 DNS 및 HTTP를 합성 응답으로 대체한다. v0.1 RiskPath의 `evaluation` 필드는 레거시 Contract의 일부로 검증한다. v0.2 실행기와 회귀 테스트는 [단계별 Live 검증 안내](../../README.md#v02-단계별-live-검증)를 참조한다.
 
 v0.1의 계약·Orchestrator 회귀 테스트와 fixture는 `tests/legacy/`에 있다. v0.2의 계약 및 네 단계 Mock 통합은 각각 `tests/contract/`, `tests/integration/`에서 검증한다. 기존 Windows CRLF 실패의 현재 위치는 `tests/modules/explorer/test_parsing.py`의 `test_raw_normalized_and_original_offsets`다. 아래 초기 기록에는 당시 경로와 결과를 보존했다.
 
