@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
-from dfsa.contracts.risk import RiskRequest
+from dfsa._v01.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
+from dfsa._v01.contracts.risk import RiskRequest
 
 
 def test_profiling_request_uses_search_results(subject_data, responses):

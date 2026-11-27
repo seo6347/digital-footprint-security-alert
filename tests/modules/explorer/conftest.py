@@ -1,6 +1,6 @@
 import pytest
 
-from dfsa.contracts.search import SearchResult
+from dfsa._v01.contracts.search import SearchResult
 
 
 @pytest.fixture(autouse=True)

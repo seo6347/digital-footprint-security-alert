@@ -1,52 +1,88 @@
-"""Service <-> Module B contracts and shared Source / Exposure models."""
+"""Service and Module B contracts."""
 
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
+
+from dfsa._documents import ParsedDocument
 
 from .common import (
-    ContractModel,
-    ErrorDetail,
-    ExposureType,
-    IdentityStatus,
-    ModuleStatus,
-    ProcessingStatus,
-    RequestContract,
-    Subject,
+    ContractModel, ErrorDetail, ExposureID, ExposureType, IdentityStatus, ModuleStatus,
+    NonEmpty, ProcessingStatus, RequestContract, SourceID, Subject, unique_ids,
 )
-from .search import SearchResult
 
-# Module B가 처리한 출처의 상태와 동일인 검증 결과.
-# source_id는 A에서 생성한 값을 유지하며, identity_status=None은 검증 미완료를 의미한다.
+
 class Source(ContractModel):
-    source_id: str
+    source_id: SourceID
     url: str
     processing_status: ProcessingStatus
-    # Producers must supply a non-null enum once identity verification completes.
     identity_status: IdentityStatus | None = None
 
-# 추출한 Exposure를 실제 출처와 연결하는 증거 정보.
-# 검색 결과 snippet이 아니라 B가 처리한 출처에서 확인한 근거를 기록한다.
+
 class ExposureSource(ContractModel):
-    source_id: str
-    evidence: str
+    source_id: SourceID
+    evidence: NonEmpty
 
-# Module B가 동일인 확인 후 추출한 공식 공개 정보.
-# 각 Exposure는 최소 하나 이상의 출처·증거를 보유해야 하며 Module C의 입력으로 사용된다.
+
+_SUBTYPES = {
+    ExposureType.IDENTITY: {"name", "role"},
+    ExposureType.AFFILIATION: {"university", "laboratory"},
+    ExposureType.CONTACT: {"email"},
+    ExposureType.RELATIONSHIP: {"advisor"},
+}
+
+
 class Exposure(ContractModel):
-    exposure_id: str  # Owned by Module B.
+    exposure_id: ExposureID
     type: ExposureType
-    value: str
+    value: NonEmpty
+    subtype: str | None = None
     relation: str | None = None
-    sources: list[ExposureSource] = Field(default_factory=list, min_length=1)
+    sources: list[ExposureSource] = Field(min_length=1)
 
-# Orchestrator가 Module B에 전달하는 입력.
-# 대상 정보와 A가 발견한 검색 후보만 전달하며, 검색 실행 상태는 Orchestrator가 관리한다.
+    @model_validator(mode="after")
+    def validate_subtype(self) -> Self:
+        if self.subtype is not None and self.subtype not in _SUBTYPES.get(self.type, ()):
+            raise ValueError("Unsupported exposure type and subtype combination")
+        return self
+
+
+def validate_exposure_references(sources: list[Source], exposures: list[Exposure]) -> None:
+    unique_ids(sources, "source_id")
+    unique_ids(exposures, "exposure_id")
+    confirmed = {
+        source.source_id for source in sources
+        if source.identity_status == IdentityStatus.CONFIRMED
+        and source.processing_status == ProcessingStatus.SUCCESS
+    }
+    for exposure in exposures:
+        if any(reference.source_id not in confirmed for reference in exposure.sources):
+            raise ValueError("Exposure must reference a successfully processed confirmed source")
+
+
 class ProfilingRequest(RequestContract):
     subject: Subject
-    search_results: list[SearchResult]
+    documents: tuple[ParsedDocument, ...]
 
-# Module B의 전체 실행 결과.
+
 class ProfilingResponse(RequestContract):
     status: ModuleStatus
     sources: list[Source] = Field(default_factory=list)
     exposures: list[Exposure] = Field(default_factory=list)
     errors: list[ErrorDetail] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_references(self) -> Self:
+        validate_exposure_references(self.sources, self.exposures)
+        failures = {ProcessingStatus.FETCH_FAILED, ProcessingStatus.PARSE_FAILED, ProcessingStatus.UNSUPPORTED}
+        has_failures = self.errors or any(source.processing_status in failures for source in self.sources)
+        expected = ModuleStatus.SUCCESS
+        if has_failures:
+            usable = any(
+                source.identity_status is not None and source.processing_status not in failures
+                for source in self.sources
+            )
+            expected = ModuleStatus.PARTIAL_SUCCESS if usable else ModuleStatus.FAILED
+        if self.status != expected:
+            raise ValueError("Profiling status does not match its completed decisions and failures")
+        return self

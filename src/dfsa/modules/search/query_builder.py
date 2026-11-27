@@ -1,6 +1,6 @@
 """Build initial search queries from the subject."""
 
-from dfsa.contracts.common import Subject
+from dfsa._v01.contracts.common import Subject
 
 
 def _quote_term(value: str) -> str:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from dfsa.contracts.common import ExposureType, IdentityStatus, Subject
+from dfsa._v01.contracts.common import ExposureType, IdentityStatus, Subject
 from dfsa.modules.profiling import extraction
 from dfsa.modules.profiling._types import ExtractionResult, ValidatedExposureCandidate
 from dfsa.modules.profiling.identity import verify_identity

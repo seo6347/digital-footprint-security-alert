@@ -2,15 +2,15 @@
 
 - Project: Digital Footprint Security Alert (DFSA)
 - Document version: v0.2
-- Status: 팀 Review 및 Contract Freeze 대상 (본 PR은 문서 변경만 포함)
-- Implementation baseline: main `285e55865b81e97243a03afdf5a6d3fd42d023c0`
+- Status: PR #14 팀 승인 및 `main` 병합 시 Contract Freeze (§12)
+- v0.1 구현 기준: main `285e55865b81e97243a03afdf5a6d3fd42d023c0`
 - 기존 v0.1 명세: [team-development-spec-v0.1.md](team-development-spec-v0.1.md)
 
 ## 1. 목적 및 MVP 범위
 
 최소한의 개인정보로 본인 또는 명시적으로 동의한 대상의 공개 연구실 웹사이트를 검색하고, 승인 범위 내 페이지를 탐색해 확인된 공개 정보와 관계를 시각화한다. 공개 정보 노출이 사회공학적 사칭 위험으로 이어질 수 있음을 교육하고 대응 방안을 제시한다.
 
-v0.1은 실제 A/B/C와 Orchestrator의 Offline E2E를 검증했다(PR #11). PR 기록상 Offline E2E 89 passed, 전체 1301 passed / 1 failed(기존 Windows CRLF fixture 문제). 이후 팀 Live 테스트에서는 검색 결과 0건 및 SEARCH_API_ERROR, 직접 프로필 분석에서 uncertain/no_name_match가 발생했다. 세부 원인은 확정되지 않았다. v0.2의 목표는 실제 검색 및 웹페이지를 통한 end-to-end 결과 시연이다. 기존 테스트 수치는 이번 문서 PR에서 재실행한 결과가 아니다.
+v0.1은 실제 A/B/C와 Orchestrator의 Offline E2E를 검증했다(PR #11). 당시 기록은 Offline E2E 89 passed, 전체 1301 passed / 1 failed(기존 Windows CRLF fixture 문제)였다. 이후 팀 Live 테스트에서는 검색 결과 0건 및 SEARCH_API_ERROR, 직접 프로필 분석에서 uncertain/no_name_match가 발생했다. 세부 원인은 확정되지 않았다. v0.2의 목표는 실제 검색 및 웹페이지를 통한 end-to-end 결과 시연이다.
 
 ### P0
 - 이름 + 학교(정식 명칭 또는 약칭) 입력, 이메일 선택.
@@ -72,7 +72,7 @@ flowchart TD
 ## 4. 공통 규칙 및 ID
 
 - Python 3.12, Pydantic v2. Public Contract는 extra="forbid", validate_default=True. 내부 문서 전달은 별도 typed Python 모델로 관리하며 JSON/UI로 원문 전체를 보내지 않는다.
-- Public request/response는 schema_version: Literal["v0.2"], request_id: str. v0.1 호환 응답을 별도 유지하는 것은 필수가 아니다. 구조 분리 단계에서는 기존 v0.1 계약 유지.
+- Public request/response는 schema_version: Literal["v0.2"], request_id: str. v0.1 실행·회귀 검증의 임시 격리 정책은 §12를 따른다.
 - 명시된 Optional 필드는 생략 가능하며 기본 null. 응답의 collection은 기본 [] 및 항상 직렬화, 필수 summary/stages/time은 생략 금지. 필수 요청 배열은 별도 명시. ID는 요청 내 고유하고 빈 문자열 금지.
 - ErrorDetail 유지: code: str, message: str, retryable: bool, source_id: str|null=null, query_id: str|null=null. 키·개인정보·원문·외부 응답 및 raw exception을 오류 메시지에 넣지 않는다.
 - ModuleStatus: success, partial_success, failed. StageStatus는 동일 값 + not_started. 정상 0건은 성공 가능, 실패가 있는 경우 사용 가능한 결과가 있어야 partial_success. 예상치 못한 프로그래밍/계약 오류는 명시적으로 실패시키며 정상 결과로 숨기지 않는다.
@@ -102,7 +102,8 @@ SearchRequest = RequestContract + subject: Subject + options: SearchOptions(defa
 - SearchResponse의 기존 필드 유지: status, searched_at(UTC aware datetime), queries: QueryExecution[], results: SearchResult[], errors: ErrorDetail[].
 - QueryExecution: query_id, text, provider, status(success/failed), input_fields: list[str](실제 사용한 Subject 필드; P0 ["name","organization"]).
 - SearchResult: source_id, url(실제 반환 원본), normalized_url, title:str|null, snippet:str|null, rank:int, relevance:{status:candidate/uncertain,reasons:list[RelevanceReason]}, discovered_by:list[{query_id,provider_rank:int|null}]. 기존 relevance enum 유지.
-- SearchResponse 결과 0건은 정상 검색이면 success. 오류와 결과가 함께 있으면 partial_success, 오류가 있고 사용 가능한 결과가 없으면 failed. A runner 및 관련 테스트의 기존 불일치를 수정한다.
+- 각 SearchResult의 `discovered_by`는 같은 응답에 기록된 Query를 참조하며, 성공한 Query를 하나 이상 포함한다. 성공·실패 Query가 함께 기록된 경우는 허용한다.
+- SearchResponse는 오류나 실패 Query가 없으면 0건도 `success`다. 오류 또는 실패 Query와 사용 가능한 결과가 함께 있으면 `partial_success`, 사용 가능한 결과가 없으면 `failed`다. 실제 A runner의 v0.2 전환은 §12의 Module A 기능 PR에서 진행한다.
 - 검색 snippet은 실제 페이지 원문 Evidence가 아니다.
 
 ## 6. Page Explorer
@@ -142,7 +143,7 @@ NavigationEntry (Public metadata):
 | status | success / fetch_failed / parse_failed / unsupported / blocked / skipped |
 | reason | str|null |
 
-실제 방문 및 처리 결과와 접근하지 않은 후보는 status로 구분한다. 이미 확보된 페이지를 다른 경로로 발견한 경우 동일 source_id로 추가 경로를 기록할 수 있으나 재요청하지 않는다. 차단된 미방문 기록은 Exposure의 출처가 될 수 없다. redirect 최종 URL은 검증된 경우만 기록한다.
+seed의 `source_id`와 발견 `url`은 A의 SearchResult와 일치해야 한다. 한 `source_id`의 여러 기록은 같은 페이지를 가리키며, 확인된 redirect 별칭이나 복수 경로는 재요청 없이 같은 ID에 기록할 수 있다. 스킵한 경로는 이미 확인된 별칭만 재사용한다. `success`에는 검증된 절대 HTTP(S) `final_url`이 필수이며, redirect가 없는 경우에도 실제 확보 URL을 기록한다. 이 값은 확보 문서의 `final_url` 및 B의 공개 `Source.url`과 일치해야 한다. 차단된 미방문 기록은 Exposure의 출처가 될 수 없다.
 
 ExplorationResult (typed internal envelope):
 - schema_version, request_id, status: ModuleStatus
@@ -150,8 +151,11 @@ ExplorationResult (typed internal envelope):
 - navigation_history: list[NavigationEntry] (기본 [])
 - errors: list[ErrorDetail] (기본 [])
 - limit_reached: bool, 기본 false
+- attempted_source_ids: tuple[str, ...] (기본 empty, 실제 페이지 요청을 시도한 source_id, 내부 전용)
 
-승인된 후보가 없으면 정상 0건 또는 정책상 차단 상태로 구분한다. 실제 확보된 문서가 있고 일부 처리 실패/한도에 의한 미완료가 있으면 partial_success. 오류가 있고 문서가 없으면 failed. 단순 정책상 무관한 링크의 제외만으로 실패를 만들지 않는다. 이력을 UI에서 완전한 사이트 수집으로 오해하지 않게 한다.
+시도 ID는 같은 결과의 탐색 이력에 `skipped` 이외의 기록이 있어야 한다. `success`, `parse_failed`, `unsupported`의 source_id는 시도 ID에 포함한다. `fetch_failed`와 `blocked`는 실제 요청 여부를 기준으로 기록한다. 요청 전 실패·차단은 시도에 포함하지 않으며, 요청 뒤 redirect 차단은 시작 페이지의 ID를 포함한다. `visited_page_count`는 고유 시도 ID 수이며 redirect hop은 별도 페이지로 세지 않는다. 공개 결과에서 방문 수는 요청이 확실한 고유 페이지 수 이상, `skipped` 이외의 기록이 있는 고유 페이지 수 이하로 검증한다.
+
+기술적 실패는 `errors` 또는 탐색 이력의 `fetch_failed`, `parse_failed`, `unsupported`로 확인한다. 확보 문서와 기술적 실패 또는 한도에 의한 미완료가 함께 있으면 `partial_success`, 기술적 실패만 있으면 `failed`다. 정책상 제외만 있었으면 정상 0건이 가능하다.
 
 ## 7. Module B — Profiling
 
@@ -161,6 +165,8 @@ ProfilingResponse = RequestContract + status: ModuleStatus + sources: list[Sourc
 
 Source: source_id, url (검증한 실제 최종 URL), processing_status(success/fetch_failed/parse_failed/unsupported/rejected), identity_status: IdentityStatus|null=null. Explorer 실패 정보는 navigation_history에 남기고 B는 전달된 문서를 판단한다.
 IdentityStatus: confirmed, uncertain, rejected. 동일인 판정 전 null, 판정 완료 후 enum. 확정은 시스템의 근거 기반 귀속 판단이며 법적 본인 인증을 의미하지 않는다.
+
+Orchestrator는 반환된 Source의 ID와 실제 URL을 입력 문서와 대조한다. `success`는 모든 입력 문서에 대한 Source와 완료된 동일인 판정을 요구한다. `uncertain`, `rejected`, Exposure 0건은 정상 처리 결과에 포함된다. `partial_success`에서 Source를 반환하지 못한 문서는 해당 `source_id`의 오류로 기록한다. 단계 전체가 `failed`인 경우 사용할 수 있는 Exposure가 없으며 후속 분석을 생략한다.
 
 Exposure 유지/확장:
 | Field | Type / Policy |
@@ -191,6 +197,7 @@ ExposureSource: source_id: str, evidence: str(non-empty). 모든 참조는 B가 
 
 AnalysisRequest = RequestContract + subject: Subject + exposures: list[Exposure] (default []). 오직 B의 검증된 Exposure를 이용하며 직접 웹 접근, 동일인 재판정, 새로운 사실 추론을 하지 않는다.
 AnalysisResponse = RequestContract + status: ModuleStatus + personal_profile: PersonalProfile|null + relationship_graph: RelationshipGraph + phishing_risk_scenarios: list[PhishingRiskScenario] + security_recommendations: list[SecurityRecommendation] + errors: list[ErrorDetail].
+응답 상태는 오류가 없으면 `success`, 오류와 사용 가능한 결과가 함께 있으면 `partial_success`, 오류만 있으면 `failed`다. 결과 유무는 Profile의 존재 또는 Graph 노드·시나리오·대응 방안의 유무로 판단한다.
 Profile/Graph는 결정적 규칙 기반. C의 세부 구현은 Owner 자율. 기존 RiskPath 필수 규칙, 5항목 평가, score/rank 및 기존 R01~R05 충족 조건은 폐기한다.
 
 ### 8.1 PersonalProfile
@@ -214,6 +221,8 @@ GraphEdge: edge_id:str, source_node_id:str, target_node_id:str, relation: AFFILI
 
 PhishingRiskScenario: scenario_id:str, title:str, explanation:str, educational_example:str, exposure_types:list[ExposureType] (non-empty), safety_checks:list[str] (non-empty).
 SecurityRecommendation: recommendation_id:str, title:str, description:str, exposure_types:list[ExposureType] (빈 배열은 일반 수칙).
+
+시나리오와 유형별 대응 방안의 `exposure_types`는 B가 검증한 Exposure에서 실제로 발견된 유형만 참조한다. 일반 대응 방안은 빈 목록을 사용할 수 있다.
 
 노출 유형 기반의 방어 교육용 Rule + Template을 사용한다. 실제 인물과 분리된 합성 사례로 사칭 위험을 설명하고 공식 채널 확인 등 방어 방법을 제공한다. 실제 대상의 이름·이메일·관계 등을 결합한 공격용 콘텐츠, 발송 가능한 이메일 문안, 공격 성공률 예측을 생성하지 않는다. C에 LLM을 필수 도입하지 않는다. 교육 설명은 해당 정보 유형이 실제로 발견되었을 때 제공하되 구체적인 개인 데이터는 삽입하지 않는다. 대응 방안은 노출 유형에 맞추고 중복 제거한다.
 
@@ -275,7 +284,7 @@ ResultSummary: search_result_count, visited_page_count(실제 요청을 시도�
 | 실행 단계 partial_success 존재, 후속 치명 실패 없음 | 사용 가능한 입력이 있으면 진행 | partial_success |
 | 모든 실행 단계 정상 | - | success |
 
-실제 실행한 단계 상태를 유지하며 미실행은 not_started. A/E/B의 failed는 우선하고 C 실패는 앞선 결과가 있으므로 partial_success. 오류를 단계 순서로 수집하고 완전히 같은 항목만 병합한다. 조기 종료해도 검색/탐색 이력과 이미 검증한 결과는 보존한다. 성공 상태와 MVP 성공 조건은 구분한다.
+실제 실행한 단계 상태를 유지하며 미실행은 `not_started`로 기록한다. DFSAResult는 공개 검색 결과, 성공한 탐색 기록, 검증된 Exposure를 기준으로 후속 단계의 실행 여부를 검증한다. A/E/B의 실패는 전체 실패이고, C 실패는 앞선 결과를 보존해 부분 성공으로 처리한다. 오류는 단계 순서로 수집하고 모든 필드가 같은 항목만 병합한다. 성공 상태와 MVP 성공 조건은 구분한다.
 
 ## 10. Web UI 및 기술 선택
 
@@ -295,7 +304,7 @@ v0.1의 외부 라이브러리 최소 사용 방침을 v0.2에서 완화한다. 
 
 ## 12. Repository 변경 및 개발 순서
 
-예정 경로 (본 PR에서는 생성하지 않음):
+v0.2 계약과 모듈 경로:
 ```text
 src/dfsa/
   contracts/        common.py, search.py, exploration.py, profiling.py, analysis.py, result.py
@@ -305,7 +314,7 @@ src/dfsa/
     profiling/
     risk/           # C 담당자가 내부 이름/구조 조정 가능
   service/         orchestrator.py
-  # 공유 내부 문서 타입: Refactoring PR에서 경로 확정
+  _documents.py    # Explorer와 B의 공유 내부 문서 타입
 tests/
   contract/
   integration/
@@ -323,7 +332,9 @@ frontend/          # UI 담당자 소유 예정
 | 5 | UI/API 연결 | 정유채, Orchestrator 협업 | DFSAResult 기반 결과 화면 |
 | 6 | Offline/Live E2E + 매뉴얼 | 공동 | 실제 시연 성공, 실패 경로 검증 |
 
-Contract Freeze 이후 공유 field/enum/ID/의미 변경은 팀 합의 및 fixture/test 수정과 함께 PR로 수행한다. 구조 분리 전 B 신규 LLM 사전 실험은 독립 fixture를 사용 가능하나 중복 변경을 피한다. UI는 합의된 Mock DFSAResult로 병렬 개발 가능하다. 기능별 feature/fix branch, main 직접 수정 금지, What/Why/Test PR 및 리뷰 정책 유지.
+계약과 Orchestrator를 검증한 PR #14가 팀 승인 후 `main`에 병합되는 시점에 Contract Freeze를 적용한다. 이후 공유 field/enum/ID/의미 변경은 팀 합의 및 fixture/test 수정과 함께 PR로 수행한다. UI는 합의된 Mock DFSAResult로 병렬 개발할 수 있다. 기능별 브랜치를 사용하고, `main` 직접 수정 금지와 What/Why/Test PR 및 리뷰 정책을 유지한다.
+
+`dfsa._v01`은 기존 실행과 회귀 검증을 위해 계약과 Orchestrator를 임시로 격리한 영역이다. 신규 v0.2 개발은 `dfsa.contracts`와 `dfsa.service`를 사용한다. 모든 모듈의 v0.2 전환과 회귀 검증이 끝나면 임시 영역 제거를 검토한다.
 
 ## 13. 테스트 및 Definition of Done
 
@@ -333,7 +344,7 @@ Contract Freeze 이후 공유 field/enum/ID/의미 변경은 팀 합의 및 fixt
 - B: 이름 표기 차이, 이메일 없음, 동명이인/복수 인물 분리, Rule/LLM 결과 불일치, 환각/잘못된 인물 근거, 원문 참조 및 dedup, LLM API 실패/timeout 및 prompt injection 데이터 처리.
 - C: 검증 Exposure만 사용, Profile/Graph의 근거 참조, 빈 항목/지도 관계 추정 방지, 합성 교육 사례 및 대응 방안.
 - Orchestrator/UI: 모든 단계 및 조기 종료, 결과 보존, 시간 및 상태, 입력/발견 구분, UI 8개 결과, 데이터 격리.
-- 기존 CRLF fixture 실패는 별도 fix로 확인하고 테스트를 skip/xfail하거나 assertion을 약화하여 숨기지 않는다. v0.1 RiskPath 관련 테스트는 새 계약이 정식 반영된 단계에서 삭제/대체하고 변경 이유를 기록한다.
+- 기존 CRLF fixture 실패는 별도 수정으로 다루며 테스트 skip/xfail이나 assertion 완화로 숨기지 않는다. v0.2 공개 계약 테스트는 Analysis 결과를 검증하고, 기존 RiskPath 검증은 v0.1 회귀 테스트로 보존한다.
 - Offline E2E는 실제 모듈과 fake 외부 의존성을 이용하며 실제 네트워크/API key 불필요. Live E2E는 별도 opt-in 및 승인 정책으로 실행한다. Precision/Recall/F1 등 정량 Evaluation은 요구하지 않는다.
 
 ### MVP Acceptance Criteria
@@ -350,7 +361,7 @@ Contract Freeze 이후 공유 field/enum/ID/의미 변경은 팀 합의 및 fixt
 - 학교 제공 LLM API의 실제 사양/허용 모델/데이터 처리 조건/비용·호출 제한은 아직 확인되지 않았다. B 담당자가 확인 후 설정 및 내부 adapter를 결정한다.
 - Explorer의 초기 제한(깊이 3, 30페이지, 40 HTTP 요청 등) 및 LLM 초기 제한은 설계 제안값으로, 승인 범위 및 실제 소요 시간을 확인한 후 팀 Review에서 조정한다. 실제 대상 사이트 전체 크기/Live 성공을 보장하지 않는다.
 - UI 담당자가 추천 스택과 상세 UI/API 방식 수정 가능. 불확실한 동일인 후보 확인 UX 미구현 시 공식 결과에서 제외한다.
-- 본 문서는 설계 Review용이다. Merge 후 v0.2 개발의 기준이 되며 기존 구현은 후속 PR에서 단계적으로 전환한다. v0.1 명세 및 구현을 현재 동작의 참고로 보존한다.
+- 기존 실행은 후속 기능 PR에서 단계적으로 v0.2로 전환한다. v0.1 명세와 회귀 검증은 전환 기간의 기준으로 보존한다.
 
 ## 15. 기존 명세 대비 변경 요약
 

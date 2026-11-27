@@ -1,14 +1,14 @@
 
 import pytest
 
-from dfsa.contracts.common import (
+from dfsa._v01.contracts.common import (
     EvaluationValue,
     ExposureType,
     RiskPathStatus,
     Subject,
 )
-from dfsa.contracts.profiling import Exposure, ExposureSource
-from dfsa.contracts.risk import RiskRequest, RiskResponse
+from dfsa._v01.contracts.profiling import Exposure, ExposureSource
+from dfsa._v01.contracts.risk import RiskRequest, RiskResponse
 from dfsa.modules.risk.engine import run_risk
 
 

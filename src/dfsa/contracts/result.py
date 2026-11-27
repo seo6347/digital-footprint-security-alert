@@ -1,47 +1,162 @@
-"""Service -> UI contract. Pipeline execution belongs to Phase 2."""
+"""Public v0.2 result consumed by the UI."""
 
-from pydantic import Field
+from typing import Annotated, Self
 
-from .common import (
-    ContractModel,
-    ErrorDetail,
-    ModuleStatus,
-    RequestContract,
-    StageStatus,
-    Subject,
+from pydantic import Field, model_validator
+
+from .analysis import (
+    PersonalProfile, PhishingRiskScenario, RelationshipGraph, SecurityRecommendation,
+    validate_analysis_references,
 )
-from .profiling import Exposure, Source
-from .risk import RiskPath
+from .common import (
+    ContractModel, ErrorDetail, IdentityStatus, ModuleStatus, RequestContract, StageStatus,
+    Subject, unique_ids,
+)
+from .exploration import (
+    NavigationEntry, NavigationStatus, has_technical_navigation_failure, navigation_request_bounds,
+    validate_navigation,
+)
+from .profiling import Exposure, Source, validate_exposure_references
+from .search import QueryExecution, SearchResult, has_failed_search_query, validate_search_references
 
-# 전체 Pipeline의 단계별 실행 상태.
-# 호출하지 않은 Module은 failed가 아니라 not_started로 기록한다.
+Milliseconds = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+Count = Annotated[int, Field(ge=0)]
+
+
 class Stages(ContractModel):
     search: StageStatus
+    exploration: StageStatus
     profiling: StageStatus
-    risk_analysis: StageStatus
+    analysis: StageStatus
 
-# A/B/C의 결과를 종합한 최종 개수 요약.
-# 각 값은 Orchestrator가 실제 Module 결과를 기준으로 계산한다.
+    def overall_status(self) -> ModuleStatus:
+        if StageStatus.FAILED in (self.search, self.exploration, self.profiling):
+            return ModuleStatus.FAILED
+        if self.analysis == StageStatus.FAILED or (
+            StageStatus.PARTIAL_SUCCESS in (self.search, self.exploration, self.profiling, self.analysis)
+        ):
+            return ModuleStatus.PARTIAL_SUCCESS
+        return ModuleStatus.SUCCESS
+
+
+class ExecutionTime(ContractModel):
+    total_ms: Milliseconds
+    search_ms: Milliseconds | None
+    exploration_ms: Milliseconds | None
+    profiling_ms: Milliseconds | None
+    analysis_ms: Milliseconds | None
+
+
 class ResultSummary(ContractModel):
-    search_result_count: int
-    confirmed_source_count: int
-    total_exposures: int
-    total_risk_paths: int
+    search_result_count: Count
+    visited_page_count: Count
+    confirmed_source_count: Count
+    total_exposures: Count
+    total_graph_nodes: Count
+    total_graph_edges: Count
+    total_scenarios: Count
+    total_recommendations: Count
 
-# Orchestrator가 생성하여 UI에 전달하는 최종 통합 결과.
-# 각 Module의 Public Contract 모델을 재사용하며 별도 UI 전용 Schema를 만들지 않는다.
+
 class DFSAResult(RequestContract):
-
-    # 전체 Pipeline 상태와 단계별 실행 상태는 구분한다.
     status: ModuleStatus
     subject: Subject
     stages: Stages
-
-    # Module B/C의 결과 모델을 재사용하여 출처 → 공개 정보 → 위험 경로의 근거 관계를 보존한다.
+    search_history: list[QueryExecution] = Field(default_factory=list)
+    discovered_sources: list[SearchResult] = Field(default_factory=list)
+    navigation_history: list[NavigationEntry] = Field(default_factory=list)
+    exploration_limit_reached: bool = False
     sources: list[Source] = Field(default_factory=list)
     exposures: list[Exposure] = Field(default_factory=list)
-    risk_paths: list[RiskPath] = Field(default_factory=list)
-
-    # 전체 결과 개수와 Module별 오류를 Orchestrator가 집계한다.
+    personal_profile: PersonalProfile | None = None
+    relationship_graph: RelationshipGraph = Field(default_factory=RelationshipGraph)
+    phishing_risk_scenarios: list[PhishingRiskScenario] = Field(default_factory=list)
+    security_recommendations: list[SecurityRecommendation] = Field(default_factory=list)
+    execution_time: ExecutionTime
     summary: ResultSummary
     errors: list[ErrorDetail] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_result(self) -> Self:
+        validate_search_references(self.search_history, self.discovered_sources)
+        validate_navigation(self.navigation_history, self.discovered_sources)
+        validate_exposure_references(self.sources, self.exposures)
+        validate_analysis_references(
+            self.personal_profile, self.relationship_graph, self.exposures,
+            scenarios=self.phishing_risk_scenarios, recommendations=self.security_recommendations,
+        )
+        unique_ids(self.phishing_risk_scenarios, "scenario_id")
+        unique_ids(self.security_recommendations, "recommendation_id")
+        successful_sources = {
+            (entry.source_id, entry.final_url) for entry in self.navigation_history
+            if entry.status == NavigationStatus.SUCCESS
+        }
+        for source in self.sources:
+            if (source.source_id, source.url) not in successful_sources:
+                raise ValueError("Source must match successful navigation")
+        if self.status != self.stages.overall_status():
+            raise ValueError("Overall status does not match stage statuses")
+        stages = self.stages
+        if stages.search == StageStatus.NOT_STARTED:
+            raise ValueError("A pipeline result requires an executed search stage")
+        runnable = {StageStatus.SUCCESS, StageStatus.PARTIAL_SUCCESS}
+        for upstream, downstream, has_input in (
+            (stages.search, stages.exploration, bool(self.discovered_sources)),
+            (stages.exploration, stages.profiling, bool(successful_sources)),
+            (stages.profiling, stages.analysis, bool(self.exposures)),
+        ):
+            should_run = upstream in runnable and has_input
+            if (downstream != StageStatus.NOT_STARTED) != should_run:
+                raise ValueError("Stage execution must match upstream status and available input")
+        if stages.search == StageStatus.FAILED and self.discovered_sources:
+            raise ValueError("Failed search cannot publish discovered sources")
+        if stages.search == StageStatus.PARTIAL_SUCCESS and not self.discovered_sources:
+            raise ValueError("Partial search requires discovered sources")
+        if stages.search == StageStatus.SUCCESS and has_failed_search_query(self.search_history):
+            raise ValueError("Successful search cannot contain failed queries")
+        if stages.exploration not in runnable and successful_sources:
+            raise ValueError("Failed or skipped exploration cannot publish acquired pages")
+        if stages.exploration == StageStatus.NOT_STARTED and (self.navigation_history or self.exploration_limit_reached):
+            raise ValueError("Skipped exploration cannot publish navigation output")
+        if stages.exploration == StageStatus.PARTIAL_SUCCESS and not successful_sources:
+            raise ValueError("Partial exploration requires an acquired page")
+        if stages.exploration == StageStatus.SUCCESS and (
+            has_technical_navigation_failure(self.navigation_history)
+            or (successful_sources and self.exploration_limit_reached)
+        ):
+            raise ValueError("Successful exploration cannot contain technical failures or incomplete acquisition")
+        if stages.profiling not in runnable and self.exposures:
+            raise ValueError("Failed or skipped profiling cannot publish exposures")
+        if stages.profiling == StageStatus.NOT_STARTED and self.sources:
+            raise ValueError("Skipped profiling cannot publish sources")
+        if stages.analysis not in runnable and (
+            self.personal_profile is not None or self.relationship_graph.nodes
+            or self.phishing_risk_scenarios or self.security_recommendations
+        ):
+            raise ValueError("Failed or skipped analysis cannot publish analysis output")
+        for stage in Stages.model_fields:
+            duration = getattr(self.execution_time, f"{stage}_ms")
+            not_started = getattr(self.stages, stage) == StageStatus.NOT_STARTED
+            if (duration is None) != not_started:
+                raise ValueError("Stage duration must be present only for executed stages")
+            if duration is not None and duration > self.execution_time.total_ms:
+                raise ValueError("Stage duration cannot exceed total duration")
+        counts = {
+            "search_result_count": len(self.discovered_sources),
+            "confirmed_source_count": sum(
+                source.identity_status == IdentityStatus.CONFIRMED for source in self.sources
+            ),
+            "total_exposures": len(self.exposures),
+            "total_graph_nodes": len(self.relationship_graph.nodes),
+            "total_graph_edges": len(self.relationship_graph.edges),
+            "total_scenarios": len(self.phishing_risk_scenarios),
+            "total_recommendations": len(self.security_recommendations),
+        }
+        if any(getattr(self.summary, field) != count for field, count in counts.items()):
+            raise ValueError("Summary counts do not match result collections")
+        required_visits, eligible_visits = navigation_request_bounds(self.navigation_history)
+        if self.summary.visited_page_count < len(required_visits):
+            raise ValueError("Visited page count is below the number of known page requests")
+        if self.summary.visited_page_count > len(eligible_visits):
+            raise ValueError("Visited page count exceeds unique navigation sources")
+        return self

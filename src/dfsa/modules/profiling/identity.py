@@ -17,7 +17,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from dfsa._documents import ParsedBlock, ParsedDocument
-from dfsa.contracts.common import IdentityStatus, Subject
+from dfsa._v01.contracts.common import IdentityStatus, Subject
 
 from ._types import IdentityDecision, IdentityEvidence
 

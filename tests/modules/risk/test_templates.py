@@ -1,7 +1,7 @@
 
 import pytest
 
-from dfsa.contracts.common import RiskCategory
+from dfsa._v01.contracts.common import RiskCategory
 from dfsa.modules.risk.templates import generate_explanation
 
 

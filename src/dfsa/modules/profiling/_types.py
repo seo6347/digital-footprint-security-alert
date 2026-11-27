@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from dfsa.contracts.common import ExposureType, IdentityStatus
+from dfsa._v01.contracts.common import ExposureType, IdentityStatus
 
 
 @dataclass(frozen=True)

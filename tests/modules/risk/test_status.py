@@ -2,7 +2,7 @@
 import pytest
 from types import SimpleNamespace
 
-from dfsa.contracts.common import ExposureType, RiskPathStatus
+from dfsa._v01.contracts.common import ExposureType, RiskPathStatus
 from dfsa.modules.risk.rules import match_rules
 from dfsa.modules.risk.status import determine_path_status
 

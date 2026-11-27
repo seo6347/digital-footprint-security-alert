@@ -8,9 +8,9 @@
 
 ## 1. Source of Truth
 
-v0.2 개발 목표, Architecture, Public Contract 및 팀 결정은 `docs/team-development-spec-v0.2.md`를 기준으로 한다. 해당 문서 PR의 팀 Review 및 Merge 이후 적용한다.
+v0.2 개발 목표, Architecture, Public Contract 및 팀 결정의 기준은 `docs/team-development-spec-v0.2.md`다. Contract Freeze 시점은 해당 명세 §12를 따른다.
 
-`docs/team-development-spec-v0.1.md`는 기존 구현과 구조 분리 단계의 계약 및 개발 이력으로 보존한다. 문서 변경만으로 현재 실행 코드가 v0.2로 전환된 것은 아니다. 기존 v0.1 구조 분리 PR은 v0.1 계약을 유지하고, 후속 Contract PR에서 v0.2로 전환한다.
+`docs/team-development-spec-v0.1.md`는 기존 실행과 개발 이력의 기준으로 보존한다. 신규 개발은 v0.2 공개 계약과 호출 경계를 사용한다.
 
 README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다. 코드와 해당 단계의 명세가 충돌하면 먼저 보고한다. 상세 기술 결정은 중앙 명세에 유지한다.
 
@@ -64,9 +64,8 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `src/dfsa/contracts/common.py`       | 공통 모델, Subject, ErrorDetail, Enum                     | 🔴       |
 | `src/dfsa/contracts/search.py`       | Module A 요청·응답 Contract                               | 🔴       |
 | `src/dfsa/contracts/profiling.py`    | Module B 요청·응답, Source·Exposure Contract              | 🔴       |
-| `src/dfsa/contracts/risk.py` | 기존 v0.1 C 계약; 후속 Contract PR에서 교체 예정 | 🔴 |
-| `src/dfsa/contracts/exploration.py` | 예정: Explorer 계약 및 탐색 이력 | 🔴 |
-| `src/dfsa/contracts/analysis.py` | 예정: v0.2 C 계약, Profile/Graph/교육/대응 결과 | 🔴 |
+| `src/dfsa/contracts/exploration.py` | Explorer 내부 계약과 공개 탐색 이력 | 🔴 |
+| `src/dfsa/contracts/analysis.py` | C 계약, Profile/Graph/교육/대응 결과 | 🔴 |
 | `src/dfsa/contracts/result.py`       | 최종 `DFSAResult`, stage, summary Contract              | 🔴       |
 | `src/dfsa/modules/`                  | 실제 Module Python 패키지 루트; 하위 담당 영역별 작업 위치 | 하위 정책 적용 |
 | `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
@@ -79,13 +78,16 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
 | `src/dfsa/service/__init__.py`       | Public `run_pipeline` import 진입점                      | 🟡       |
 | `src/dfsa/service/orchestrator.py`   | 요청 변환, 호출·상태 제어, 오류·결과 조합 및 Module callable 연결 | 🟡       |
+| `src/dfsa/_v01/` | 임시 v0.1 실행 및 회귀 검증용 계약과 Orchestrator | 🟡 |
 | `tests/contract/`                    | Public Contract validation 회귀 테스트                     | 🟡       |
 | `tests/integration/`                 | Contract-valid Mock 기반 Orchestrator Pipeline 검증       | 🟡       |
 | `tests/modules/search/`              | Module A 동작·오류 처리 테스트 위치 — 정유채 담당          | 🟡       |
 | `tests/modules/profiling/`           | Module B 동작·오류 처리 테스트 위치 — 서동균 담당          | 🟡       |
 | `tests/modules/risk/`                | Module C 동작·오류 처리 테스트 위치 — 강영림 담당          | 🟡       |
-| `tests/fixtures/`                    | Contract 기준 Mock JSON                                 | 🟡       |
-| `evaluation/README.md`               | tests와 Evaluation의 구분, 담당·미결 기준·데이터 관리 안내 | 🟡       |
+| `tests/fixtures/v02/` | v0.2 단계별 합성 객체와 UI 개발용 결과 JSON | 🟡 |
+| `tests/legacy/` | v0.1 계약 및 Orchestrator 회귀 테스트와 fixture | 🟡 |
+| `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 수동 Live runner | 🟡 |
+| `evaluation/README.md`               | v0.1 평가 준비 이력과 v0.2 검증 범위 | 🟡       |
 | `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
 | `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |
 | `evaluation/module_c/`               | Module C 품질 평가 위치 — 강영림 담당                    | 🟡       |
@@ -102,14 +104,14 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 
 | 영역 | 현재 상태 / v0.2 계획 |
 | --- | --- |
-| A/B/C | main에 v0.1 구현 존재; 후속 PR로 v0.2 전환 |
-| Orchestrator | v0.1 호출 제어 구현 존재 |
-| Offline E2E | PR #11 main Merge 완료; Live 성공 미확인 |
-| Explorer | v0.1 B에서 HTML Fetch, URL Policy, Parsing을 분리했고 B가 이를 사용한다. 별도 탐색 단계는 후속 PR에서 연결한다. |
+| A/B/C | 기존 v0.1 구현으로 회귀를 검증한다. v0.2 callable 구현은 담당자별 후속 PR 범위다. |
+| Orchestrator | v0.2 A → Explorer → B → C 호출 제어 구현. Mock 검증 가능. |
+| Offline E2E | v0.1 실제 모듈 회귀 검증 유지. |
+| Explorer | 기존 문서 확보 구현과 v0.2 호출 경계가 준비됐다. 실제 탐색은 후속 PR 범위다. |
 | Frontend / UI | 담당자가 신규 구현 및 기술 상세 수정 |
 | Evaluation | 별도 정량적 평가 제외; 기능·회귀·Live E2E 검증 유지 |
 
-예정 경로는 실제 생성된 파일이 아니다. 구조 및 Contract 변경 후 Repository Map을 갱신한다.
+v0.2 담당자별 구현 예정 파일, import 경로, callable 연결 예시는 [README의 Module 연결 안내](README.md#v02-orchestrator-사용-및-module-연결)를 따른다. 구조 및 Contract 변경 후 Repository Map을 갱신한다.
 
 ---
 
@@ -125,7 +127,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | Orchestrator | 서동균 | A → Explorer → B → C 호출 제어 및 시간/상태/결과 조합 |
 | 공통 Contract | 서동균 + 팀 Review | Public Contract 관리 및 변경 검토 |
 
-구조 분리 단계에서는 v0.1 호출 흐름을 유지하여 B가 Explorer의 문서 확보 기능을 사용한다. v0.2에서는 Orchestrator가 A/Explorer/B/C를 각각 호출한다. C는 확인된 Exposure만 사용하며 Orchestrator는 분석 내용을 재생성하지 않는다. UI 담당자는 추천 기술 스택과 구현 상세를 수정할 수 있으나 공통 계약 변경은 팀 합의를 거친다.
+v0.2에서는 Orchestrator가 A/Explorer/B/C를 각각 호출한다. C는 확인된 Exposure만 사용하며 Orchestrator는 분석 내용을 재생성하지 않는다. `dfsa._v01`은 기존 실행과 회귀 검증 전용이다. 신규 v0.2 코드의 의존성을 공개 v0.2 계약과 공유 내부 자료형으로 유지하고, 모든 모듈의 전환과 회귀 검증 이후 레거시 제거를 검토한다. UI 담당자는 추천 기술 스택과 구현 상세를 수정할 수 있으나 공통 계약 변경은 팀 합의를 거친다.
 
 ---
 

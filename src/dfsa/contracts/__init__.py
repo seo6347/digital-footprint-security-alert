@@ -1,21 +1,26 @@
-"""Shared v0.1 public contracts; no module execution or orchestration."""
+"""Public v0.2 contracts. Explorer document envelopes are Python-only."""
 
-# 외부 Component에서 사용하는 주요 Public Contract를 패키지 수준으로 공개한다.
-# 실제 Schema 정의는 common/search/profiling/risk/result.py에 있다.
-
-from .common import Subject
-from .profiling import ProfilingRequest, ProfilingResponse
-from .result import DFSAResult
-from .risk import RiskRequest, RiskResponse
-from .search import SearchRequest, SearchResponse
+from .analysis import (
+    AnalysisRequest, AnalysisResponse, GraphEdge, GraphNode, GraphRelation, NodeKind, NodeOrigin,
+    PersonalProfile, PhishingRiskScenario, ProfileItem, RelationshipGraph, SecurityRecommendation,
+)
+from .common import (
+    ErrorDetail, ExposureType, IdentityStatus, ModuleStatus, ProcessingStatus, QueryStatus,
+    RelevanceReason, RelevanceStatus, Subject, StageStatus,
+)
+from .exploration import ExplorationRequest, ExplorationResult, NavigationEntry, NavigationStatus
+from .profiling import Exposure, ExposureSource, ProfilingRequest, ProfilingResponse, Source
+from .result import DFSAResult, ExecutionTime, ResultSummary, Stages
+from .search import DiscoveredBy, QueryExecution, Relevance, SearchOptions, SearchRequest, SearchResponse, SearchResult
 
 __all__ = [
-    "Subject",
-    "SearchRequest",
-    "SearchResponse",
-    "ProfilingRequest",
-    "ProfilingResponse",
-    "RiskRequest",
-    "RiskResponse",
-    "DFSAResult",
+    "AnalysisRequest", "AnalysisResponse", "DFSAResult", "DiscoveredBy", "ErrorDetail",
+    "ExecutionTime", "ExplorationRequest", "ExplorationResult", "Exposure", "ExposureSource",
+    "ExposureType", "GraphEdge", "GraphNode", "GraphRelation", "IdentityStatus", "ModuleStatus",
+    "NavigationEntry", "NavigationStatus", "NodeKind", "NodeOrigin", "PersonalProfile",
+    "PhishingRiskScenario", "ProcessingStatus", "ProfileItem", "ProfilingRequest",
+    "ProfilingResponse", "QueryExecution", "QueryStatus", "RelationshipGraph", "Relevance",
+    "RelevanceReason", "RelevanceStatus", "ResultSummary", "SearchOptions", "SearchRequest",
+    "SearchResponse", "SearchResult", "SecurityRecommendation", "Source", "StageStatus",
+    "Stages", "Subject",
 ]

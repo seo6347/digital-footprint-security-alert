@@ -1,7 +1,7 @@
 """Phase 4 exposure discovery inside confirmed roots; no deduplication or IDs."""
 
 from dfsa._documents import ParsedDocument
-from dfsa.contracts.common import IdentityStatus
+from dfsa._v01.contracts.common import IdentityStatus
 
 from ._types import (
     ExposureCandidate, ExtractionDiagnostic, ExtractionResult, IdentityDecision,

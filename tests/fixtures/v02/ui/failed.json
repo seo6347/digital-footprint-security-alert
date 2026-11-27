@@ -1,0 +1,66 @@
+{
+  "schema_version": "v0.2",
+  "request_id": "req_fixture_failed",
+  "status": "failed",
+  "subject": {
+    "name": "Sample Researcher",
+    "organization": "Example University",
+    "email": null
+  },
+  "stages": {
+    "search": "failed",
+    "exploration": "not_started",
+    "profiling": "not_started",
+    "analysis": "not_started"
+  },
+  "search_history": [
+    {
+      "query_id": "q_fixture",
+      "text": "Sample Researcher Example University",
+      "provider": "synthetic",
+      "status": "failed",
+      "input_fields": [
+        "name",
+        "organization"
+      ]
+    }
+  ],
+  "discovered_sources": [],
+  "navigation_history": [],
+  "exploration_limit_reached": false,
+  "sources": [],
+  "exposures": [],
+  "personal_profile": null,
+  "relationship_graph": {
+    "nodes": [],
+    "edges": []
+  },
+  "phishing_risk_scenarios": [],
+  "security_recommendations": [],
+  "execution_time": {
+    "total_ms": 30.0,
+    "search_ms": 10.0,
+    "exploration_ms": null,
+    "profiling_ms": null,
+    "analysis_ms": null
+  },
+  "summary": {
+    "search_result_count": 0,
+    "visited_page_count": 0,
+    "confirmed_source_count": 0,
+    "total_exposures": 0,
+    "total_graph_nodes": 0,
+    "total_graph_edges": 0,
+    "total_scenarios": 0,
+    "total_recommendations": 0
+  },
+  "errors": [
+    {
+      "code": "MOCK_SEARCH_FAILURE",
+      "message": "Search unavailable.",
+      "retryable": true,
+      "source_id": null,
+      "query_id": "q_fixture"
+    }
+  ]
+}

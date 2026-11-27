@@ -6,8 +6,8 @@ No identity/extraction rules, global cache, or public response assembly live her
 
 from collections.abc import Iterable
 
-from dfsa.contracts.common import ExposureType
-from dfsa.contracts.profiling import Exposure, ExposureSource
+from dfsa._v01.contracts.common import ExposureType
+from dfsa._v01.contracts.profiling import Exposure, ExposureSource
 
 from ._types import EvidenceReference, ValidatedExposureCandidate
 

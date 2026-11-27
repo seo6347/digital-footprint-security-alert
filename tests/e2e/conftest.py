@@ -14,12 +14,13 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from dfsa.contracts import Subject
+from dfsa._v01.contracts import Subject
 from dfsa.modules.explorer import fetch
-from dfsa.modules.profiling import run_profiling
+from dfsa.modules.profiling.pipeline import run_profiling
 from dfsa.modules.risk.engine import run_risk
-from dfsa.modules.search import provider, run_search
-from dfsa.service import orchestrator
+from dfsa.modules.search import provider
+from dfsa.modules.search.runner import run_search
+from dfsa._v01 import orchestrator
 
 
 class Reply(io.BytesIO):

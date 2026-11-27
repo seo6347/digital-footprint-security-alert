@@ -9,8 +9,8 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts.common import ExposureType, IdentityStatus, Subject
-from dfsa.contracts.profiling import Exposure, ExposureSource
+from dfsa._v01.contracts.common import ExposureType, IdentityStatus, Subject
+from dfsa._v01.contracts.profiling import Exposure, ExposureSource
 from dfsa.modules.profiling._types import (
     EvidenceReference, ExposureCandidate, ValidatedExposureCandidate,
 )

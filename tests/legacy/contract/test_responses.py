@@ -3,14 +3,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts import (
+from dfsa._v01.contracts import (
     DFSAResult, ProfilingRequest, ProfilingResponse, RiskRequest, RiskResponse,
     SearchRequest, SearchResponse,
 )
-from dfsa.contracts.common import StageStatus
-from dfsa.contracts.profiling import Exposure, Source
-from dfsa.contracts.risk import RiskPath
-from dfsa.contracts.search import SearchResult
+from dfsa._v01.contracts.common import StageStatus
+from dfsa._v01.contracts.profiling import Exposure, Source
+from dfsa._v01.contracts.risk import RiskPath
+from dfsa._v01.contracts.search import SearchResult
 
 
 RESPONSES = [

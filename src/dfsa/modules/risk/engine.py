@@ -1,12 +1,12 @@
 
 """DFSA Module C risk analysis engine."""
 
-from dfsa.contracts.common import (
+from dfsa._v01.contracts.common import (
     EvaluationValue,
     ModuleStatus,
     RiskPathStatus,
 )
-from dfsa.contracts.risk import (
+from dfsa._v01.contracts.risk import (
     RiskEvaluation,
     RiskPath,
     RiskRequest,

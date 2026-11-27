@@ -9,6 +9,7 @@ import math
 import socket
 import ssl
 from contextlib import closing
+from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
 from urllib.request import (
@@ -16,10 +17,17 @@ from urllib.request import (
 )
 
 from dfsa.contracts.common import ErrorDetail
-from dfsa.contracts.search import SearchResult
 
 from ._types import FetchError, FetchFailure, FetchedHTML, FetchProblem
 from .url_policy import Resolver, check_url_text, validate_url
+
+
+class _FetchSource(Protocol):
+    @property
+    def source_id(self) -> str: ...
+
+    @property
+    def url(self) -> str: ...
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -56,7 +64,7 @@ def _http_problem(status: int) -> FetchError:
 
 
 def fetch_html(
-    source: SearchResult, *, timeout: float = 10, max_redirects: int = 5,
+    source: _FetchSource, *, timeout: float = 10, max_redirects: int = 5,
     max_body_bytes: int = 2 * 1024 * 1024, opener=None,
     resolver: Resolver | None = None,
 ) -> FetchedHTML | FetchFailure:

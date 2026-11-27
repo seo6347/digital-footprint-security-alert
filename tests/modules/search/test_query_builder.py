@@ -1,6 +1,6 @@
 import pytest
 
-from dfsa.contracts.common import Subject
+from dfsa._v01.contracts.common import Subject
 from dfsa.modules.search.query_builder import build_queries
 
 
