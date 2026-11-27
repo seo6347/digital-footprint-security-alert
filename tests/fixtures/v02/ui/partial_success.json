@@ -1,0 +1,121 @@
+{
+  "schema_version": "v0.2",
+  "request_id": "req_fixture_partial_success",
+  "status": "partial_success",
+  "subject": {
+    "name": "Sample Researcher",
+    "organization": "Example University",
+    "email": null
+  },
+  "stages": {
+    "search": "success",
+    "exploration": "success",
+    "profiling": "success",
+    "analysis": "failed"
+  },
+  "search_history": [
+    {
+      "query_id": "q_fixture",
+      "text": "Sample Researcher Example University",
+      "provider": "synthetic",
+      "status": "success",
+      "input_fields": [
+        "name",
+        "organization"
+      ]
+    }
+  ],
+  "discovered_sources": [
+    {
+      "source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "normalized_url": "https://lab.example.org/people/sample",
+      "title": null,
+      "snippet": null,
+      "rank": 1,
+      "relevance": {
+        "status": "candidate",
+        "reasons": [
+          "name_match",
+          "organization_match"
+        ]
+      },
+      "discovered_by": [
+        {
+          "query_id": "q_fixture",
+          "provider_rank": 1
+        }
+      ]
+    }
+  ],
+  "navigation_history": [
+    {
+      "navigation_id": "nav_seed",
+      "source_id": "src_profile",
+      "parent_source_id": null,
+      "root_source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "final_url": "https://lab.example.org/people/sample",
+      "depth": 0,
+      "status": "success",
+      "reason": null
+    }
+  ],
+  "exploration_limit_reached": false,
+  "sources": [
+    {
+      "source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "processing_status": "success",
+      "identity_status": "confirmed"
+    }
+  ],
+  "exposures": [
+    {
+      "exposure_id": "exp_university",
+      "type": "affiliation",
+      "value": "Example University",
+      "subtype": "university",
+      "relation": null,
+      "sources": [
+        {
+          "source_id": "src_profile",
+          "evidence": "University: Example University"
+        }
+      ]
+    }
+  ],
+  "personal_profile": null,
+  "relationship_graph": {
+    "nodes": [],
+    "edges": []
+  },
+  "phishing_risk_scenarios": [],
+  "security_recommendations": [],
+  "execution_time": {
+    "total_ms": 90.0,
+    "search_ms": 10.0,
+    "exploration_ms": 10.000000000000002,
+    "profiling_ms": 9.999999999999995,
+    "analysis_ms": 9.999999999999995
+  },
+  "summary": {
+    "search_result_count": 1,
+    "visited_page_count": 1,
+    "confirmed_source_count": 1,
+    "total_exposures": 1,
+    "total_graph_nodes": 0,
+    "total_graph_edges": 0,
+    "total_scenarios": 0,
+    "total_recommendations": 0
+  },
+  "errors": [
+    {
+      "code": "MOCK_ANALYSIS_FAILURE",
+      "message": "Analysis unavailable.",
+      "retryable": true,
+      "source_id": null,
+      "query_id": null
+    }
+  ]
+}

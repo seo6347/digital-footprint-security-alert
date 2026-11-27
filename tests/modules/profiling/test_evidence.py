@@ -5,7 +5,7 @@ from html import unescape
 
 import pytest
 
-from dfsa.contracts.common import ExposureType, IdentityStatus, Subject
+from dfsa._v01.contracts.common import ExposureType, IdentityStatus, Subject
 from dfsa.modules.profiling._types import ExtractionDiagnostic, ValidatedExposureCandidate
 from dfsa.modules.profiling.evidence import EvidenceContext, validate_candidate
 from dfsa.modules.profiling.extraction import extract_exposures

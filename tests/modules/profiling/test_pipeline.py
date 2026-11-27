@@ -9,13 +9,13 @@ from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
 
-from dfsa.contracts.common import ErrorDetail, ExposureType, IdentityStatus, ModuleStatus, Subject
-from dfsa.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
-from dfsa.modules.profiling import run_profiling
-from dfsa.modules.profiling import deduplication, extraction, fetch, identity, parsing, pipeline
-from dfsa.modules.profiling._types import (
-    ExtractionResult, FetchError, FetchFailure, ParseError, ParseFailure,
-)
+from dfsa._v01.contracts.common import ErrorDetail, ExposureType, IdentityStatus, ModuleStatus, Subject
+from dfsa._v01.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
+from dfsa.modules.explorer import fetch, parsing
+from dfsa.modules.explorer._types import FetchError, FetchFailure, ParseError, ParseFailure
+from dfsa.modules.profiling import deduplication, extraction, identity, pipeline
+from dfsa.modules.profiling.pipeline import run_profiling
+from dfsa.modules.profiling._types import ExtractionResult
 
 
 def test_empty_request_still_deduplicates_once(phase6_request, monkeypatch):

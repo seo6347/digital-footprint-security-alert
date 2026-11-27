@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from dfsa.contracts.search import SearchRequest, SearchResponse
+from dfsa._v01.contracts.search import SearchRequest, SearchResponse
 from dfsa.modules.search import runner
 from dfsa.modules.search.provider import (
     ProviderResult,

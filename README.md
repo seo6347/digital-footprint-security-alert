@@ -6,15 +6,20 @@ DFSA는 사용자의 공개된 디지털 발자국을 모으고 구조화하여,
 
 ## 현재 개발 상태
 
-| 영역 | 현재 상태 |
-| --- | --- |
-| 공통 Contract | Pydantic v2 모델과 validation 테스트 준비 완료 |
-| DFSA Orchestrator | 호출 흐름·결과 조합 구현 및 Mock Integration Test 완료 |
-| Module A / B / C | 구현·테스트 폴더 준비 완료, 실제 기능 구현 예정 |
-| Module별 / E2E Evaluation | 폴더와 안내 문서 준비 완료, Dataset·Metric·절차 미확정 |
-| Frontend / UI | 구현 예정 |
+v0.2 공통 Contract, 네 단계 Orchestrator, 합성 Mock이 준비되어 각 담당자가 독립적으로 개발할 수 있다. v0.1 실제 모듈과 Offline E2E는 기존 동작의 회귀 검증에 사용한다. 실제 검색부터 공개 정보 확인까지의 Live E2E 성공은 아직 확인되지 않았다.
 
-현재는 Module 병렬 개발을 시작하기 위한 공통 기반이 준비된 상태입니다. 실제 검색 API, HTML 수집·분석, Risk Rule Engine을 연결한 완성 서비스는 아직 제공하지 않습니다.
+v0.2 개발은 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기준으로 한다. Contract Freeze는 [PR #14](https://github.com/seo6347/digital-footprint-security-alert/pull/14)의 팀 승인과 `main` 병합 시 적용한다.
+
+| 영역 | v0.2 구현 상태 및 후속 범위 |
+| --- | --- |
+| Search | 선택 이메일과 검색 Contract 구현. 실제 v0.2 SerpApi 검색은 후속 |
+| Page Explorer | 문서 확보 코드 재사용 가능, 독립 호출 경계 구현. 다중 페이지 탐색은 후속 |
+| Profiling | 문서 입력과 Exposure/Evidence Contract 구현. Rule + LLM 처리는 후속 |
+| Analysis | Profile·Graph·교육 사례·대응 방안 Contract 구현. 생성 로직은 후속 |
+| Orchestrator | 검색·탐색·Profiling·Analysis 호출 제어, 실행 시간, DFSAResult 구현 |
+| Web UI | 합성 DFSAResult 제공. UI 및 API 연결은 후속 |
+
+본인 또는 동의한 대상의 승인된 로컬 시연을 목표로 하며, 실제 피싱 메시지 생성·발송 및 무관한 제3자 개인정보 수집은 제외한다. v0.2에서는 필요에 따라 외부 라이브러리를 활용하고 별도 정량적 Evaluation은 요구하지 않는다.
 
 ## Repository 구조
 
@@ -26,32 +31,37 @@ DFSA/
 ├── requirements.txt
 ├── pytest.ini
 ├── docs/
-│   └── team-development-spec-v0.1.md
+│   ├── team-development-spec-v0.1.md  # 기존 구현/이력
+│   └── team-development-spec-v0.2.md  # 신규 개발 명세
 ├── src/dfsa/
-│   ├── contracts/                   # 공통 Pydantic Contract
+│   ├── _documents.py                # Explorer와 Module B의 공유 내부 문서 자료형
+│   ├── contracts/                   # v0.2 공통 Pydantic Contract
+│   ├── _v01/                        # 임시 v0.1 계약 및 Orchestrator
 │   ├── service/
 │   │   └── orchestrator.py          # Pipeline 실행·결과 조합
-│   └── modules/                     # 실제 구현 예정 위치
+│   └── modules/                     # 담당자별 구현 및 기존 v0.1 로직
 │       ├── search/                  # Module A
+│       ├── explorer/                # Page Explorer 문서 확보
 │       ├── profiling/               # Module B
 │       └── risk/                    # Module C
 ├── tests/
 │   ├── contract/
 │   ├── integration/
-│   ├── fixtures/
-│   └── modules/                     # Module별 테스트 추가 예정
+│   ├── fixtures/v02/                # 단계별 합성 Mock과 UI JSON
+│   ├── legacy/                      # v0.1 계약·Orchestrator 회귀 검증
+│   ├── e2e/                         # v0.1 실제 모듈 회귀 및 수동 Live runner
+│   └── modules/                     # Module별 테스트
 │       ├── search/
+│       ├── explorer/                # Fetch, URL Policy, Parsing 회귀 테스트
 │       ├── profiling/
 │       └── risk/
-└── evaluation/                      # 품질 평가 준비 위치
+└── evaluation/                      # v0.1 평가 준비 이력
     ├── README.md
     ├── module_a/
     ├── module_b/
     ├── module_c/
     └── e2e/
 ```
-
-Module 패키지는 현재 빈 `__init__.py`만 포함합니다. Module 테스트와 Evaluation의 빈 디렉터리는 `.gitkeep`으로 유지합니다.
 
 ## 개발 환경 및 설치
 
@@ -82,11 +92,9 @@ python -m pytest tests/contract
 python -m pytest tests/integration
 ```
 
-기존 Integration Test는 실제 외부 API 대신 Contract-valid Mock을 사용합니다. `pytest.ini`가 테스트 실행 시 `src`를 import 경로에 추가합니다. Module 테스트와 품질 평가 코드는 아직 없습니다. pytest 통과와 Evaluation 완료는 구분합니다.
+v0.2 Integration 테스트는 Contract를 만족하는 합성 Mock을 사용합니다. `pytest.ini`는 테스트 실행 시 `src`를 import 경로에 추가합니다. `tests/legacy/`와 `tests/e2e/`의 기존 v0.1 회귀 테스트는 전체 실행에서 계속 검증합니다.
 
-## Orchestrator 사용 및 Module 연결
-
-Public entry point는 [src/dfsa/service/orchestrator.py](src/dfsa/service/orchestrator.py)에 있으며, 패키지에서도 import할 수 있습니다.
+## v0.2 Orchestrator 사용 및 Module 연결
 
 pytest 밖에서 직접 Python 코드를 실행하려면 Repository root에서 `src`를 import 경로에 포함합니다.
 
@@ -94,51 +102,49 @@ pytest 밖에서 직접 Python 코드를 실행하려면 Repository root에서 `
 $env:PYTHONPATH = (Resolve-Path .\src).Path
 ```
 
-```python
-from dfsa.service import run_pipeline
+`dfsa.service.run_pipeline(Subject) -> DFSAResult`가 공개 실행 진입점입니다. 요청·응답 모델은 `dfsa.contracts`에서 가져옵니다. 담당자가 후속 PR에서 아래 함수를 구현하면 애플리케이션 시작 시 `dfsa.service.orchestrator`의 같은 이름에 연결합니다.
 
-# Public Interface
-# run_pipeline(subject: Subject) -> DFSAResult
-```
-
-입력은 공통 `Subject` 모델이고, 반환 값은 공통 `DFSAResult`입니다. Module A/B/C는 서로 직접 호출하지 않으며, Orchestrator가 각 Module의 요청을 만들고 결과를 조합합니다.
-
-각 Module 담당자가 다음 함수를 구현하면 시작 코드에서 연결할 수 있습니다.
-
-| Module | 구현할 함수 | 구현 위치 |
+| 담당 | Public Interface | 구현 예정 파일 / Python 모듈 |
 | --- | --- | --- |
-| A | `run_search(SearchRequest) -> SearchResponse` | `src/dfsa/modules/search/` |
-| B | `run_profiling(ProfilingRequest) -> ProfilingResponse` | `src/dfsa/modules/profiling/` |
-| C | `run_risk(RiskRequest) -> RiskResponse` | `src/dfsa/modules/risk/` |
+| A · 정유채 | `run_search(SearchRequest) -> SearchResponse` | `src/dfsa/modules/search/runner_v2.py` · `dfsa.modules.search.runner_v2` |
+| Explorer · 서동균 | `run_exploration(ExplorationRequest) -> ExplorationResult` | `src/dfsa/modules/explorer/runner.py` · `dfsa.modules.explorer.runner` |
+| B · 서동균 | `run_profiling(ProfilingRequest) -> ProfilingResponse` | `src/dfsa/modules/profiling/pipeline_v2.py` · `dfsa.modules.profiling.pipeline_v2` |
+| C · 강영림 | `run_analysis(AnalysisRequest) -> AnalysisResponse` | `src/dfsa/modules/risk/analysis.py` · `dfsa.modules.risk.analysis` |
 
-아래는 함수 구현 후의 연결 예시입니다. `run_search`, `run_profiling`, `run_risk`는 각 담당자의 구현에서 가져올 함수이며, 현재 패키지에는 아직 정의되어 있지 않습니다.
+연결은 첫 요청 전에 수행합니다. 실행할 단계가 미연결이면 오류가 발생합니다. 저장소 루트에서 아래 예시를 실행하면 합성 Mock만으로 네 단계를 검증할 수 있습니다.
 
 ```python
-from dfsa.contracts import Subject
-from dfsa.service import orchestrator
+from runpy import run_path
+from unittest.mock import patch
 
-# 애플리케이션 시작 시 실제 Module 함수 또는 Mock을 연결한다.
-orchestrator.run_search = run_search
-orchestrator.run_profiling = run_profiling
-orchestrator.run_risk = run_risk
+from dfsa.service import orchestrator, run_pipeline
 
-subject = Subject(
-    name="홍길동",
-    organization="OO대학교",
-    email="gildong@univ.ac.kr",
-)
-result = orchestrator.run_pipeline(subject)
+fixtures = run_path("tests/fixtures/v02/stages.py")
+with patch.multiple(orchestrator, **fixtures["mock_handlers"]("success")):
+    result = run_pipeline(fixtures["SUBJECT"])
+print(result.model_dump_json(indent=2))
 ```
 
-연결은 요청 처리 전에 수행합니다. Module이 연결되지 않으면 명시적으로 오류가 발생합니다. 현재 Mock Pipeline 검증은 위 Integration Test 명령으로 실행할 수 있습니다.
+`stage_requests()`와 `stage_responses()`는 A → Explorer → B → C 순서의 합성 객체를 반환합니다. Explorer 응답과 B 요청의 내부 문서는 Python 객체로 전달합니다. UI는 아래 JSON을 독립적으로 사용할 수 있습니다. 시간 값은 UI 개발용 합성 예시입니다.
+
+| [UI fixture](tests/fixtures/v02/ui) | 시나리오 |
+| --- | --- |
+| `success.json` | 네 단계와 8개 결과물이 채워진 정상 흐름 |
+| `partial_success.json` | C 실패, 검색·탐색·Exposure 결과 보존 |
+| `failed.json` | A 실패, 후속 단계 미실행 |
+| `zero.json` | A 정상 0건, 후속 단계 미실행 |
+
+`dfsa._v01`은 기존 실행 및 회귀 검증을 위한 임시 영역입니다. 신규 v0.2 개발은 공개 v0.2 진입점을 사용합니다. 전체 모듈의 v0.2 전환과 회귀 검증 이후 레거시 영역 제거를 검토합니다.
 
 ## 개발 문서
 
 | 문서 | 역할 |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Repository Map, Ownership, 작업 절차와 수정 정책 |
-| [팀 개발 명세서](docs/team-development-spec-v0.1.md) | v0.1 Architecture·Public Contract·Pipeline 정책의 단일 상세 Source of Truth |
-| [Evaluation 안내](evaluation/README.md) | Module별·E2E 평가 위치, 담당, 미결 기준과 데이터 관리 |
+| [v0.2 팀 개발 명세서](docs/team-development-spec-v0.2.md) | 현재 v0.2 Architecture·Contract·개발 정책 |
+| [v0.1 팀 개발 명세서](docs/team-development-spec-v0.1.md) | 기존 구현 및 구조 분리 단계의 계약, 개발 이력 |
+| [Evaluation 이력](evaluation/README.md) | v0.1 평가 준비 기록과 v0.2 검증 범위 |
+| [v0.1 E2E 안내](tests/e2e/README.md) | 현재 레거시 회귀 실행 경로와 초기 E2E 개발 기록 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 팀원 계정·이름 정보 |
 
-상세 Schema·Enum·Risk Rule·상태 정책과 팀 미결 사항은 기술 명세서를 확인합니다. 작업 위치와 수정 범위는 AGENTS.md를, 품질 평가 준비는 Evaluation 안내를 참조하세요.
+Schema·Enum·상태 정책은 해당 버전의 중앙 명세를, 작업 위치와 수정 범위는 AGENTS.md를 참조하세요.

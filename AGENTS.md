@@ -8,18 +8,11 @@
 
 ## 1. Source of Truth
 
-v0.1의 Architecture, Public Contract, Schema, Data Flow, Module 책임, Pipeline 정책의 기준은 다음 문서이다.
+v0.2 개발 목표, Architecture, Public Contract 및 팀 결정의 기준은 `docs/team-development-spec-v0.2.md`다. Contract Freeze 시점은 해당 명세 §12를 따른다.
 
-`docs/team-development-spec-v0.1.md`
+`docs/team-development-spec-v0.1.md`는 기존 실행과 개발 이력의 기준으로 보존한다. 신규 개발은 v0.2 공개 계약과 호출 경계를 사용한다.
 
-* README는 프로젝트 소개용이다.
-* CONTRIBUTING은 팀원 정보 관리용이다.
-* 상세 개발 결정은 `team-development-spec-v0.1.md`를 따른다.
-* 코드와 명세가 명백하게 충돌하면 임의로 수정하지 말고 먼저 보고한다.
-
-현재는 상세 명세를 하나의 파일로 유지한다.
-
-향후 Module별 내부 설계가 커지면 문서 분리를 검토할 수 있지만, 그 전까지 `team-development-spec-v0.1.md`가 단일 상세 Source of Truth이다.
+README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다. 코드와 해당 단계의 명세가 충돌하면 먼저 보고한다. 상세 기술 결정은 중앙 명세에 유지한다.
 
 ---
 
@@ -60,32 +53,41 @@ v0.1의 Architecture, Public Contract, Schema, Data Flow, Module 책임, Pipelin
 | Path                                 | 역할 / 수정 시점                                            | 정책       |
 | ------------------------------------ | ----------------------------------------------------- | -------- |
 | `AGENTS.md`                          | Repository 구조, Ownership, 수정 정책, Agent 작업 방식이 바뀔 때 갱신 | 🟡       |
-| `docs/team-development-spec-v0.1.md` | Architecture, Contract, 책임, Pipeline 등 팀 공통 결정 관리     | 🔴       |
+| `docs/team-development-spec-v0.2.md` | v0.2 Architecture, Contract, 책임, Pipeline 등 팀 공통 결정 | 🔴 |
+| `docs/team-development-spec-v0.1.md` | 기존 구현 및 구조 분리 단계의 계약, 개발 이력 | 🔴 |
 | `README.md`                          | 프로젝트 소개 및 주요 문서 안내                                    | 🟡       |
 | `CONTRIBUTING.md`                    | 팀원 계정·이름 등 협업 정보 관리                                   | 🟡       |
 | `src/dfsa/`                          | DFSA Python 패키지 루트                                    | 하위 정책 적용 |
 | `src/dfsa/__init__.py`               | 패키지 초기화                                               | 🟡       |
-| `src/dfsa/contracts/`                | A/B/C, Orchestrator, UI가 공유하는 Pydantic Contract       | 🔴       |
+| `src/dfsa/contracts/`                | A/Explorer/B/C, Orchestrator, UI가 공유하는 Pydantic Contract       | 🔴       |
 | `src/dfsa/contracts/__init__.py`     | Public Contract import/export 진입점                     | 🔴       |
 | `src/dfsa/contracts/common.py`       | 공통 모델, Subject, ErrorDetail, Enum                     | 🔴       |
 | `src/dfsa/contracts/search.py`       | Module A 요청·응답 Contract                               | 🔴       |
 | `src/dfsa/contracts/profiling.py`    | Module B 요청·응답, Source·Exposure Contract              | 🔴       |
-| `src/dfsa/contracts/risk.py`         | Module C 요청·응답, RiskPath·Evaluation Contract          | 🔴       |
+| `src/dfsa/contracts/exploration.py` | Explorer 내부 계약과 공개 탐색 이력 | 🔴 |
+| `src/dfsa/contracts/analysis.py` | C 계약, Profile/Graph/교육/대응 결과 | 🔴 |
 | `src/dfsa/contracts/result.py`       | 최종 `DFSAResult`, stage, summary Contract              | 🔴       |
 | `src/dfsa/modules/`                  | 실제 Module Python 패키지 루트; 하위 담당 영역별 작업 위치 | 하위 정책 적용 |
 | `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
-| `src/dfsa/modules/profiling/`        | Module B 구현 위치 — 서동균 담당                         | 🟡       |
+| `src/dfsa/_documents.py` | Explorer와 B가 공유하는 내부 문서 자료형 | 🟡 |
+| `src/dfsa/modules/profiling/` | Module B 구현 — 서동균 | 🟡 |
+| `src/dfsa/modules/explorer/` | HTML Fetch, URL Policy, Parsing — 서동균 | 🟡 |
+| `tests/modules/explorer/` | Fetch, URL Policy, Parsing 회귀 테스트 — 서동균 | 🟡 |
+| `frontend/` | 예정: Web UI — 정유채, 기술·구현 상세 Owner 재량 | 🟡 |
 | `src/dfsa/modules/risk/`             | Module C 구현 위치 — 강영림 담당                         | 🟡       |
 | `src/dfsa/service/`                  | 서동균 담당 상위 Pipeline service                         | 🟡       |
 | `src/dfsa/service/__init__.py`       | Public `run_pipeline` import 진입점                      | 🟡       |
 | `src/dfsa/service/orchestrator.py`   | 요청 변환, 호출·상태 제어, 오류·결과 조합 및 Module callable 연결 | 🟡       |
+| `src/dfsa/_v01/` | 임시 v0.1 실행 및 회귀 검증용 계약과 Orchestrator | 🟡 |
 | `tests/contract/`                    | Public Contract validation 회귀 테스트                     | 🟡       |
 | `tests/integration/`                 | Contract-valid Mock 기반 Orchestrator Pipeline 검증       | 🟡       |
 | `tests/modules/search/`              | Module A 동작·오류 처리 테스트 위치 — 정유채 담당          | 🟡       |
 | `tests/modules/profiling/`           | Module B 동작·오류 처리 테스트 위치 — 서동균 담당          | 🟡       |
 | `tests/modules/risk/`                | Module C 동작·오류 처리 테스트 위치 — 강영림 담당          | 🟡       |
-| `tests/fixtures/`                    | Contract 기준 Mock JSON                                 | 🟡       |
-| `evaluation/README.md`               | tests와 Evaluation의 구분, 담당·미결 기준·데이터 관리 안내 | 🟡       |
+| `tests/fixtures/v02/` | v0.2 단계별 합성 객체와 UI 개발용 결과 JSON | 🟡 |
+| `tests/legacy/` | v0.1 계약 및 Orchestrator 회귀 테스트와 fixture | 🟡 |
+| `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 수동 Live runner | 🟡 |
+| `evaluation/README.md`               | v0.1 평가 준비 이력과 v0.2 검증 범위 | 🟡       |
 | `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
 | `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |
 | `evaluation/module_c/`               | Module C 품질 평가 위치 — 강영림 담당                    | 🟡       |
@@ -98,72 +100,55 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 
 ---
 
-## 4. 아직 구현되지 않은 영역
+## 4. 현재 구현 상태 및 전환 범위
 
-아래는 아직 기능 구현이 없는 영역이다. Module A/B/C의 패키지와 테스트·평가 폴더는 준비되어 있지만 실행 entry point나 실제 구현은 없다.
+| 영역 | 현재 상태 / v0.2 계획 |
+| --- | --- |
+| A/B/C | 기존 v0.1 구현으로 회귀를 검증한다. v0.2 callable 구현은 담당자별 후속 PR 범위다. |
+| Orchestrator | v0.2 A → Explorer → B → C 호출 제어 구현. Mock 검증 가능. |
+| Offline E2E | v0.1 실제 모듈 회귀 검증 유지. |
+| Explorer | 기존 문서 확보 구현과 v0.2 호출 경계가 준비됐다. 실제 탐색은 후속 PR 범위다. |
+| Frontend / UI | 담당자가 신규 구현 및 기술 상세 수정 |
+| Evaluation | 별도 정량적 평가 제외; 기능·회귀·Live E2E 검증 유지 |
 
-| 영역               | 현재 상태 | 정책                          |
-| ---------------- | ----- | --------------------------- |
-| Module A         | 폴더·패키지만 준비, 구현 전 | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
-| Module B         | 폴더·패키지만 준비, 구현 전 | 🟡 서동균 담당 / 내부 구현은 Owner 재량 |
-| Module C         | 폴더·패키지만 준비, 구현 전 | 🟡 강영림 담당 / 내부 구현은 Owner 재량 |
-| Evaluation       | 폴더만 준비, Dataset / Metric / 절차 미확정 | 🟡 각 Module 담당 / E2E는 팀 협의 |
-| Frontend / UI    | 구현 전  | 🟡 정유채 담당 / 내부 구현은 Owner 재량 |
-
-구현이 추가되면 실제 경로와 주요 entry point를 Repository Map에 반영한다.
+v0.2 담당자별 구현 예정 파일, import 경로, callable 연결 예시는 [README의 Module 연결 안내](README.md#v02-orchestrator-사용-및-module-연결)를 따른다. 구조 및 Contract 변경 후 Repository Map을 갱신한다.
 
 ---
 
 ## 5. Ownership
 
-| 영역            | Owner          | 책임 요약                                               |
-| ------------- | -------------- | --------------------------------------------------- |
-| Module A      | 정유채            | 공개 정보 검색·수집 및 후보 관련성 판단                             |
-| Frontend / UI | 정유채            | 사용자 입력 및 최종 결과 표시                                   |
-| Module B      | 서동균            | 동일인 검증, Exposure 추출·검증, Source/Evidence 관리          |
-| Module C      | 강영림            | Risk 분석, RiskPath 생성, 평가, reason·recommendations 생성 |
-| Orchestrator  | 서동균            | A → B → C 호출 제어, 상태 관리, 실패 전파, 결과 조합                |
-| 공통 Contract   | 서동균 + 팀 Review | Public Contract 관리 및 변경 검토                          |
+| 영역 | Owner | 책임 |
+| --- | --- | --- |
+| Module A | 정유채 | 실제 검색 및 발견 출처/이력 |
+| Frontend / UI 및 API 연결 | 정유채 | 사용자 입력 및 결과 표시, UI 기술 선택 |
+| Page Explorer | 서동균 | Fetch/Parsing/보안 정책 분리, 제한된 다중 페이지 탐색 |
+| Module B | 서동균 | Rule+학교 LLM API Hybrid, 동일인 및 Exposure/Evidence 검증 |
+| Module C | 강영림 | Profile, Graph, 교육용 위험 설명 및 대응 방안 |
+| Orchestrator | 서동균 | A → Explorer → B → C 호출 제어 및 시간/상태/결과 조합 |
+| 공통 Contract | 서동균 + 팀 Review | Public Contract 관리 및 변경 검토 |
 
-### Component 간 핵심 규칙
-
-* A/B/C는 서로 직접 호출하지 않는다.
-* Orchestrator가 Public Interface를 통해 전체 흐름을 관리한다.
-* `reason`, `recommendations` 등 Risk 설명 생성은 Module C 책임이다.
-* Orchestrator는 C의 설명을 새로 생성하거나 수정하지 않는다.
-* Module C의 template 우선 / LLM fallback 및 미결 정책은 상세 명세를 따른다.
+v0.2에서는 Orchestrator가 A/Explorer/B/C를 각각 호출한다. C는 확인된 Exposure만 사용하며 Orchestrator는 분석 내용을 재생성하지 않는다. `dfsa._v01`은 기존 실행과 회귀 검증 전용이다. 신규 v0.2 코드의 의존성을 공개 v0.2 계약과 공유 내부 자료형으로 유지하고, 모든 모듈의 전환과 회귀 검증 이후 레거시 제거를 검토한다. UI 담당자는 추천 기술 스택과 구현 상세를 수정할 수 있으나 공통 계약 변경은 팀 합의를 거친다.
 
 ---
 
 ## 6. Spec Lookup Guide
 
-큰 작업을 시작할 때 `team-development-spec-v0.1.md` 전체를 매번 읽을 필요는 없다.
+`AGENTS.md`에서 Owner 및 작업 단계를 확인한 뒤 v0.2 상세 명세의 관련 절을 읽는다. v0.1 구조 분리 및 회귀 검증에는 기존 명세를 함께 확인한다.
 
-다음 순서로 확인한다.
+| 작업 | v0.2 명세 |
+| --- | --- |
+| 전체 범위, 결과, 책임 | §1–3 |
+| 공통 Contract/ID | §4 |
+| Module A | §5 |
+| Page Explorer | §6 |
+| Module B / 학교 LLM API | §7 |
+| Module C | §8 |
+| Orchestrator / DFSAResult | §9 |
+| UI | §10 |
+| 라이브러리 및 개인정보 | §11 |
+| 개발 순서 및 검증 | §12–14 |
 
-1. `AGENTS.md` 확인
-2. 작업 영역과 Owner 확인
-3. 상세 명세에서 관련 heading / keyword 검색
-4. 필요한 섹션만 읽기
-5. 작업 수행
-
-| 작업             | 우선 확인할 명세                                                                    |
-| -------------- | ---------------------------------------------------------------------------- |
-| 전체 범위·책임       | §1 문서 목적, §2 프로젝트 범위, §3 Component 및 담당 범위                                   |
-| Module A       | §3.1, §9 SearchRequest, §10 SearchResponse                                   |
-| Module B       | §3.2, §11 ProfilingRequest, §12~17 Identity / Exposure / Source              |
-| Module C       | §3.3, §18 RiskRequest, §19~22 Risk Rule / Status / Evaluation / RiskResponse |
-| Orchestrator   | §3.4, §23 DFSAResult, §24 Pipeline 제어, §25 Public Interface                  |
-| Contract 변경    | 해당 Schema, §6~8 공통 규칙, §26~29 Contract 관련 규칙                                 |
-| Test / Fixture | 해당 Contract, §27 Validation, §30 Mock Data, §35 Merge 조건                     |
-| Integration    | §25 Public Interface, §32 Integration 순서                                     |
-| UI             | §23 Service → UI, §37 UI Contract                                            |
-| 개발 순서 / 완료 조건  | §31, §32, §34, §36                                                           |
-| Evaluation     | §39 Evaluation 계획 및 미결 사항, `evaluation/README.md`                         |
-
-Evaluation의 Dataset, Metric, 절차처럼 아직 확정되지 않은 내용은 임의로 결정하지 않는다.
-
-영향 범위가 여러 Component에 걸리면 해당 Component 섹션과 공통 규칙을 함께 확인한다.
+미확인 학교 API 사양, 초기 탐색/LLM 제한은 검증 후 팀과 조정한다.
 
 ---
 
@@ -188,6 +173,8 @@ PR 본문은 기술 명세의 `What / Why / Test` 형식을 따른다.
 ---
 
 ## 8. 테스트 및 검증
+
+외부 라이브러리 사용을 적극 검토한다. Owner는 라이선스·호환성·보안·재현성을 확인하고 공통 의존성 변경을 PR에 기록한다. 기존 Evidence/URL 보안 정책을 약화시키지 않는다. 학교 API 키와 실개인정보는 저장소 및 로그에 저장하지 않는다.
 
 기본 환경:
 
@@ -239,7 +226,7 @@ Windows 로컬 환경에서는 필요하면 다음을 사용할 수 있다.
 
 작은 helper, 단순 test, 내부 refactoring은 일반적으로 반영하지 않는다.
 
-### `team-development-spec-v0.1.md`를 갱신하는 경우
+### `team-development-spec-v0.2.md`를 갱신하는 경우
 
 * Public Contract 변경
 * Schema / Enum 변경
@@ -272,7 +259,7 @@ Contract 관련 변경은 명세의 Contract 변경 절차를 따른다.
 
 ## 11. 향후 문서 분리
 
-현재는 `team-development-spec-v0.1.md` 하나를 중앙 상세 명세로 유지한다.
+v0.2는 `team-development-spec-v0.2.md`를 중앙 상세 명세로 유지하며 v0.1은 이력으로 보존한다.
 
 다음 상황이 생기면 Module별 문서 분리를 검토한다.
 

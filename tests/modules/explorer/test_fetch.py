@@ -7,8 +7,8 @@ from urllib.request import AbstractHTTPHandler, HTTPRedirectHandler, HTTPSHandle
 
 import pytest
 
-from dfsa.modules.profiling import fetch, url_policy
-from dfsa.modules.profiling._types import FetchError, FetchFailure, FetchedHTML
+from dfsa.modules.explorer import fetch, url_policy
+from dfsa.modules.explorer._types import FetchError, FetchFailure, FetchedHTML
 
 
 @pytest.mark.parametrize("content_type, charset", [

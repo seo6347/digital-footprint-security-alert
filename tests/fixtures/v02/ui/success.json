@@ -1,0 +1,180 @@
+{
+  "schema_version": "v0.2",
+  "request_id": "req_fixture_success",
+  "status": "success",
+  "subject": {
+    "name": "Sample Researcher",
+    "organization": "Example University",
+    "email": null
+  },
+  "stages": {
+    "search": "success",
+    "exploration": "success",
+    "profiling": "success",
+    "analysis": "success"
+  },
+  "search_history": [
+    {
+      "query_id": "q_fixture",
+      "text": "Sample Researcher Example University",
+      "provider": "synthetic",
+      "status": "success",
+      "input_fields": [
+        "name",
+        "organization"
+      ]
+    }
+  ],
+  "discovered_sources": [
+    {
+      "source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "normalized_url": "https://lab.example.org/people/sample",
+      "title": null,
+      "snippet": null,
+      "rank": 1,
+      "relevance": {
+        "status": "candidate",
+        "reasons": [
+          "name_match",
+          "organization_match"
+        ]
+      },
+      "discovered_by": [
+        {
+          "query_id": "q_fixture",
+          "provider_rank": 1
+        }
+      ]
+    }
+  ],
+  "navigation_history": [
+    {
+      "navigation_id": "nav_seed",
+      "source_id": "src_profile",
+      "parent_source_id": null,
+      "root_source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "final_url": "https://lab.example.org/people/sample",
+      "depth": 0,
+      "status": "success",
+      "reason": null
+    }
+  ],
+  "exploration_limit_reached": false,
+  "sources": [
+    {
+      "source_id": "src_profile",
+      "url": "https://lab.example.org/people/sample",
+      "processing_status": "success",
+      "identity_status": "confirmed"
+    }
+  ],
+  "exposures": [
+    {
+      "exposure_id": "exp_university",
+      "type": "affiliation",
+      "value": "Example University",
+      "subtype": "university",
+      "relation": null,
+      "sources": [
+        {
+          "source_id": "src_profile",
+          "evidence": "University: Example University"
+        }
+      ]
+    }
+  ],
+  "personal_profile": {
+    "name": [],
+    "university": [
+      {
+        "label": "University",
+        "value": "Example University",
+        "exposure_ids": [
+          "exp_university"
+        ]
+      }
+    ],
+    "laboratory": [],
+    "role": [],
+    "contact": [],
+    "research_interests": [],
+    "academic_relationships": [],
+    "activities": [],
+    "additional": []
+  },
+  "relationship_graph": {
+    "nodes": [
+      {
+        "node_id": "node_subject",
+        "label": "Sample Researcher",
+        "kind": "person",
+        "origin": "input",
+        "exposure_ids": []
+      },
+      {
+        "node_id": "node_university",
+        "label": "Example University",
+        "kind": "university",
+        "origin": "verified",
+        "exposure_ids": [
+          "exp_university"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "edge_id": "edge_university",
+        "source_node_id": "node_subject",
+        "target_node_id": "node_university",
+        "relation": "AFFILIATED_WITH",
+        "exposure_ids": [
+          "exp_university"
+        ]
+      }
+    ]
+  },
+  "phishing_risk_scenarios": [
+    {
+      "scenario_id": "scenario_affiliation",
+      "title": "Public affiliation and impersonation",
+      "explanation": "Public organization names can lend credibility to unsolicited requests.",
+      "educational_example": "In a fictional training exercise, a message claims to represent a campus office.",
+      "exposure_types": [
+        "affiliation"
+      ],
+      "safety_checks": [
+        "Verify the request through a known official channel."
+      ]
+    }
+  ],
+  "security_recommendations": [
+    {
+      "recommendation_id": "rec_verification",
+      "title": "Verify the sender",
+      "description": "Use an official directory to confirm unexpected requests.",
+      "exposure_types": [
+        "affiliation"
+      ]
+    }
+  ],
+  "execution_time": {
+    "total_ms": 90.0,
+    "search_ms": 10.0,
+    "exploration_ms": 10.000000000000002,
+    "profiling_ms": 9.999999999999995,
+    "analysis_ms": 9.999999999999995
+  },
+  "summary": {
+    "search_result_count": 1,
+    "visited_page_count": 1,
+    "confirmed_source_count": 1,
+    "total_exposures": 1,
+    "total_graph_nodes": 2,
+    "total_graph_edges": 1,
+    "total_scenarios": 1,
+    "total_recommendations": 1
+  },
+  "errors": []
+}

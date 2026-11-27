@@ -16,9 +16,10 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from dfsa.contracts.common import IdentityStatus, Subject
+from dfsa._documents import ParsedBlock, ParsedDocument
+from dfsa._v01.contracts.common import IdentityStatus, Subject
 
-from ._types import IdentityDecision, IdentityEvidence, ParsedBlock, ParsedDocument
+from ._types import IdentityDecision, IdentityEvidence
 
 _INLINE = {"span", "a", "b", "strong", "em", "i", "small", "label", "code", "mark"}
 _HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}

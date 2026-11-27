@@ -1,8 +1,8 @@
 
 import pytest
 
-from dfsa.contracts.common import ExposureType
-from dfsa.contracts.profiling import Exposure, ExposureSource
+from dfsa._v01.contracts.common import ExposureType
+from dfsa._v01.contracts.profiling import Exposure, ExposureSource
 from dfsa.modules.risk.rules import match_rules
 
 

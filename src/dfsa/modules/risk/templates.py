@@ -1,7 +1,7 @@
 
 """Predefined explanation and recommendation templates for Module C."""
 
-from dfsa.contracts.common import RiskCategory
+from dfsa._v01.contracts.common import RiskCategory
 
 
 TEMPLATES = {

@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from dfsa.contracts.common import IdentityStatus, Subject
-from dfsa.modules.profiling._types import FetchedHTML, IdentityDecision, ParsedDocument
+from dfsa._documents import ParsedDocument
+from dfsa._v01.contracts.common import IdentityStatus, Subject
+from dfsa.modules.explorer._types import FetchedHTML
+from dfsa.modules.explorer.parsing import parse_html
+from dfsa.modules.profiling._types import IdentityDecision
 from dfsa.modules.profiling.identity import verify_identity
-from dfsa.modules.profiling.parsing import parse_html
 
 
 @pytest.fixture
@@ -323,7 +325,7 @@ def test_title_url_and_metadata_do_not_supply_missing_body_confirmation(subject)
     ("Student A", "a@example.com", IdentityStatus.UNCERTAIN),
 ])
 def test_phase2_people_fixture_preserves_person_scope(name, email, expected):
-    html = (Path(__file__).parent / "fixtures/html/people.html").read_text(encoding="utf-8")
+    html = (Path(__file__).parents[1] / "fixtures/html/people.html").read_text(encoding="utf-8")
     document = parse(html)
     subject = Subject(name=name, organization="Example University", email=email)
     result = verify_identity(subject, document)

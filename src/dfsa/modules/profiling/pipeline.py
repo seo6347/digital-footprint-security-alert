@@ -9,15 +9,15 @@ invented here. Original documents are retained only for this call's lifetime.
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from dfsa.contracts.common import ErrorDetail, IdentityStatus, ModuleStatus, ProcessingStatus, Subject
-from dfsa.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
-from dfsa.contracts.search import SearchResult
+from dfsa._documents import ParsedDocument
+from dfsa._v01.contracts.common import ErrorDetail, IdentityStatus, ModuleStatus, ProcessingStatus, Subject
+from dfsa._v01.contracts.profiling import Exposure, ProfilingRequest, ProfilingResponse, Source
+from dfsa._v01.contracts.search import SearchResult
+from dfsa.modules.explorer import fetch, parsing
+from dfsa.modules.explorer._types import FetchError, FetchFailure, FetchedHTML, ParseFailure
 
-from . import deduplication, extraction, fetch, identity, parsing
-from ._types import (
-    ExtractionResult, FetchError, FetchFailure, FetchedHTML, IdentityDecision,
-    ParseFailure, ParsedDocument, ValidatedExposureCandidate,
-)
+from . import deduplication, extraction, identity
+from ._types import ExtractionResult, IdentityDecision, ValidatedExposureCandidate
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ def _failed_source(
     return _SourceOutcome(
         Source(source_id=source.source_id, url=source.url,
                processing_status=status, identity_status=None),
-        errors=(failure.error,),
+        errors=(ErrorDetail.model_validate(failure.error.model_dump()),),
     )
 
 

@@ -1,10 +1,12 @@
 # DFSA v0.1 pipeline E2E
 
-실제 Orchestrator와 Module A/B/C를 연결하는 기능 검증이다. 정량 Evaluation,
-Benchmark, Precision/Recall/F1 또는 품질 평가 runner는 포함하지 않는다.
-RiskPath의 기존 `evaluation` 다섯 필드는 Public Contract에 따라 검증한다.
+## 현재 실행 경로
 
-## Git 및 변경 범위
+저장소 루트에서 `python -m pytest tests/e2e`를 실행한다. v0.1 Orchestrator와 실제 A/B/C를 연결하고 DNS 및 HTTP를 합성 응답으로 대체한다. v0.1 RiskPath의 `evaluation` 필드는 레거시 Contract의 일부로 검증한다.
+
+v0.1의 계약·Orchestrator 회귀 테스트와 fixture는 `tests/legacy/`에 있다. v0.2의 계약 및 네 단계 Mock 통합은 각각 `tests/contract/`, `tests/integration/`에서 검증한다. 기존 Windows CRLF 실패의 현재 위치는 `tests/modules/explorer/test_parsing.py`의 `test_raw_normalized_and_original_offsets`다. 아래 초기 기록에는 당시 경로와 결과를 보존했다.
+
+## 초기 개발 기록 · Git 및 변경 범위
 
 - 작업 브랜치: `test/e2e-pipeline-v0.1`
 - 생성 기준, HEAD, 로컬 `origin/main`: `176eb4bd1700b202342f0780ca789d18db992a27`
@@ -21,10 +23,10 @@ RiskPath의 기존 `evaluation` 다섯 필드는 Public Contract에 따라 검�
 
 | 단계 | 실제 함수 |
 | --- | --- |
-| A | `dfsa.modules.search.run_search` (`runner.py`) |
-| B | `dfsa.modules.profiling.run_profiling` (`pipeline.py`) |
+| A | `dfsa.modules.search.runner.run_search` |
+| B | `dfsa.modules.profiling.pipeline.run_profiling` |
 | C | `dfsa.modules.risk.engine.run_risk` |
-| Service | `dfsa.service.orchestrator.run_pipeline` |
+| Service | `dfsa._v01.orchestrator.run_pipeline` |
 
 호출 관찰은 일시적인 `sys.setprofile` callback으로 수행한다. 실제 함수의 입력과 반환값을
 deep copy로 기록하며, 기존 profiler도 종료 시 복구한다. 모듈 응답을 만들어 주입하지 않는다.
@@ -48,7 +50,7 @@ socket 연결 및 일반 urllib HTTP 진입점도 차단한다. 모든 HTML과 �
 | `live_pipeline.py` | pytest 수집에서 제외되는 수동 Live 실행기 |
 | `test_live_preparation.py` | Live opt-in/범위/예산/IP 고정/출력 제한, 통신 오류·정리 및 HTTP 프레이밍을 offline으로 검증, 총 46개 |
 
-## 시나리오별 실행 결과
+## 초기 개발 기록 · 시나리오별 실행 결과
 
 2026-11-20, Windows, 기존 `.venv`, Python 3.12.2 / pytest 9.2.0에서 실행했다.
 
@@ -72,7 +74,7 @@ socket 연결 및 일반 urllib HTTP 진입점도 차단한다. 모든 HTML과 �
 | 추가 | public redirect의 원래 Source URL 보존, A/B 오류 순서 보존 | 2 passed |
 | Live 준비 | 실제 네트워크 없이 opt-in, 제한, IP 고정, 출력 및 오류/0건 구분, 본문 읽기·프레이밍 회귀 | 46 passed |
 
-## 실제 생성 결과와 Contract
+## 초기 개발 기록 · 실제 생성 결과와 Contract
 
 정상 합성 profile에서 `identity`, `contact`, `affiliation`, `relationship`, `activity`,
 `interest`, `account`, `temporal` Exposure가 각각 하나씩 생성된다. relationship의
@@ -95,7 +97,7 @@ ID는 요청 범위 안에서 해석한다. 서로 다른 요청에서 `src_001`
 정상 결과의 summary는 검색 1 / confirmed Source 1 / Exposure 8 / RiskPath 5이다.
 최종 DFSAResult의 필수 필드와 list 직렬화, JSON round-trip 및 잘못된 필드 거부를 검증했다.
 
-## 실행 기록과 기존 실패
+## 초기 개발 기록 · 실행 결과와 기존 실패
 
 ```powershell
 .venv/Scripts/python.exe -m pytest tests/e2e -v
@@ -164,10 +166,9 @@ supported 세부 정책이 미결로 남아 있고 병합된 Module C는 R01 정
 구현 전 설명과 명세의 Evaluation 계획은 현재 코드 및 이번 요청의 합의와 차이가 있다.
 해당 공통 문서는 이번 범위에서 변경하지 않았다.
 
-## Live 실행 준비
+## v0.1 Live runner 적용 범위
 
-아래 절차는 별도 네트워크 실행 승인 이후에만 사용한다. 이번 작업에서는 실행하지 않았다.
-환경변수는 세션에 안전하게 미리 설정한다. key/실제 Subject 값을 명령어, 문서, Git에 쓰지 않는다.
+`tests/e2e/live_pipeline.py`는 `dfsa._v01.orchestrator`와 기존 A/B/C를 사용하는 수동 v0.1 실행기다. pytest는 실제 네트워크 없이 Live 실행 준비만 검증한다. 아래 절차는 별도 네트워크 실행 승인 이후에만 사용한다. 환경변수는 세션에 미리 설정하며 key와 실제 Subject 값은 명령어, 문서, Git에 쓰지 않는다.
 
 - `SERPAPI_API_KEY`: 실제 SerpApi key
 - `DFSA_LIVE_SUBJECT_JSON`: 허가된 대상자의 name/organization/email JSON
@@ -196,7 +197,7 @@ RiskPath 본문과 원시 예외는 출력하거나 저장하지 않는다. 외�
 
 ## 한계와 /review 중점
 
-- Live 서비스 호환성 및 실제 TLS 연결은 실행하지 않았다. IP 고정은 offline transport 검사만 했다.
+- 초기 개발 기록에서 Live 서비스 호환성과 실제 TLS 연결은 실행하지 않았다. IP 고정은 offline transport로 검사했다.
 - DNS 조회와 전체 수행 시간에 대한 강제 deadline은 없다. HTTP socket timeout은 10초이고
   검색 응답은 1 MiB, HTML은 기존 B의 2 MiB 제한을 적용한다.
 - E2E-14는 허용된 외부 경계의 예상 밖 오류를 A/B로 전파시킨다. 외부 의존성이 없고 현재

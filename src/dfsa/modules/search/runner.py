@@ -2,8 +2,8 @@
 
 from datetime import datetime, timezone
 
-from dfsa.contracts.common import ErrorDetail, ModuleStatus
-from dfsa.contracts.search import (
+from dfsa._v01.contracts.common import ErrorDetail, ModuleStatus
+from dfsa._v01.contracts.search import (
     QueryExecution,
     SearchRequest,
     SearchResponse,
