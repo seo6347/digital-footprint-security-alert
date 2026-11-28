@@ -71,6 +71,7 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
 | `src/dfsa/_documents.py` | Explorer와 B가 공유하는 내부 문서 자료형 | 🟡 |
 | `src/dfsa/modules/profiling/` | Module B 구현 — 서동균 | 🟡 |
+| `src/dfsa/modules/profiling/llm_adapter.py` | 학교 Gateway 호출 및 내부 구조화 응답 검증 | 🟡 |
 | `src/dfsa/modules/explorer/` | Fetch, Parsing, 승인 범위·HTTPS Transport, 다중 페이지 탐색 — 서동균 | 🟡 |
 | `src/dfsa/modules/explorer/runner.py` | v0.2 `run_exploration` 진입점과 요청 단위 탐색 | 🟡 |
 | `tests/modules/explorer/` | Fetch, URL Policy, Parsing 회귀 테스트 — 서동균 | 🟡 |
@@ -90,6 +91,7 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `tests/legacy/` | v0.1 계약 및 Orchestrator 회귀 테스트와 fixture | 🟡 |
 | `tests/e2e/` | v0.1 실제 모듈 Offline E2E 및 v0.1·v0.2 수동 Live runner | 🟡 |
 | `tests/e2e/live_v02.py` | 승인된 v0.2 단계별 Live 실행 진입점 | 🟡 |
+| `tests/e2e/live_llm_pilot.py` | 합성 데이터 기반 학교 Gateway 파일럿 | 🟡 |
 | `evaluation/README.md`               | v0.1 평가 준비 이력과 v0.2 검증 범위 | 🟡       |
 | `evaluation/module_a/`               | Module A 품질 평가 위치 — 정유채 담당                    | 🟡       |
 | `evaluation/module_b/`               | Module B 품질 평가 위치 — 서동균 담당                    | 🟡       |
