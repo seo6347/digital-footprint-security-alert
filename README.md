@@ -171,7 +171,7 @@ Explorer 상세 출력의 `document_summaries`에는 확보한 문서별 `source
 
 `dfsa.modules.profiling.llm_adapter.MindlogicSession`은 학교 Gateway의 내부 호출 경계입니다. 기본 모델은 `DFSA_LLM_MODEL`, 생성 토큰 한도는 `DFSA_LLM_MAX_COMPLETION_TOKENS`(기본 4096, 최대 16384)로 설정합니다. 동기 호출자는 `run_sync`에 세션 단위 비동기 작업을 전달하고, 비동기 호출자는 `async with`에서 같은 인터페이스를 사용합니다. 호출별 모델 지정도 가능합니다. ST4·ST5에서 실제 Profiling 연동을 진행합니다.
 
-합성 파일럿은 저장소의 6개 사례만 입력으로 사용합니다. 초기 두 모델은 `gpt-5.4-nano`와 기준 모델 `gpt-5.5`입니다. 같은 `clear-match` 사례를 한 번씩 실행하고 각 호출을 정산한 뒤 `gpt-5.4-mini`, `claude-haiku-5-5`, `gemini-3.5-flash-lite`를 확인합니다. 예산과 Schema 호환성이 확인된 모델만 나머지 사례로 확장합니다. 실행 옵션과 사례 목록은 `--help`로 확인합니다.
+합성 파일럿 v3은 기본 6개와 복합 2개 사례를 사용합니다. `bilingual-affiliation`은 한글·영문 이름과 여러 문서에 분산된 소속 근거를, `mixed-member-context`는 논문·활동·공용 연락처가 섞인 문서에서 대상자의 정보와 Evidence를 검증합니다. 초기 두 모델은 `gpt-5.4-nano`와 기준 모델 `gpt-5.5`입니다. 같은 `clear-match` 사례를 한 번씩 실행하고 각 호출을 정산한 뒤 `gpt-5.4-mini`, `claude-haiku-5-5`, `gemini-3.8-flash`, `claude-sonnet-5-5`를 확인합니다. 예산과 Schema 호환성이 확인된 모델만 나머지 사례로 확장합니다. 실행 옵션과 사례 목록은 `--help`로 확인합니다.
 
 다음 명령은 비용 없이 대상과 설정만 확인합니다.
 
@@ -197,9 +197,9 @@ try {
 
 파일럿은 전 모델에 생성 토큰 4096과 동일한 Schema를 사용합니다. 보고서의 `score.areas`에는 Identity, Extraction, 정보 귀속, Evidence, Schema별 결과가 나오며, `usage`와 `elapsed_ms`에는 보고된 토큰과 실행 시간이 나옵니다. Timeout도 청구될 수 있습니다. 동일한 Dashboard 범위에서 호출 전후 차감액을 대조하고, 확인된 해당 호출의 실측값만 로컬 JSON의 `actual_credits`에 입력합니다. `credit_source`는 `dashboard` 또는 `gateway_usage`로 표시합니다. 다른 사용량과 분리할 수 없으면 두 값은 `null`로 유지합니다. [학교 사용량 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/usage) · [학교 잔액 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/credits)
 
-`python tests/e2e/live_llm_pilot.py --summarize <보고서1> <보고서2>`는 영역별 통과 건수, 토큰, 중앙 응답 시간과 실측 크레딧을 비교합니다. 모델 선정에는 6개 사례 모두에서 Identity 정답과 Schema 통과, 치명적 오류 0건, 필수 Exposure 추출률 90% 이상이 필요합니다. Identity 점수는 추출률에 포함하지 않으며, 올바른 값과 Evidence가 함께 있어야 Exposure 한 건으로 셉니다. Identity가 `confirmed`가 아닌 응답에 Exposure가 있으면 치명적 오류입니다. `clear-match`는 명시적 지도 관계를 포함합니다. 현재 필수 Exposure가 7건이므로 90%를 충족하려면 7건을 모두 찾아야 합니다.
+`python tests/e2e/live_llm_pilot.py --summarize <보고서1> <보고서2>`는 영역별 통과 건수, 토큰, 중앙 응답 시간과 실측 크레딧을 비교합니다. `case_groups.basic`과 `case_groups.complex`에서 각각 실행한 사례 수와 품질 기준 충족 여부를 확인합니다. 모델 선정은 **전체 8개 사례**에서 Identity 정답과 Schema 통과, 치명적 오류 0건, Evidence가 검증된 필수 Exposure 12건 중 11건 이상(90% 기준)을 요구합니다. Identity가 `confirmed`가 아닌 응답에 Exposure가 있으면 치명적 오류입니다.
 
-조건을 충족하고 정산을 완료한 모델 중 가장 경제적인 단일 모델을 표시합니다. 각 모델·사례에 최신 버전 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
+전체 품질 기준을 충족하고 정산을 완료한 모델 중 **실측 크레딧 합계가 가장 낮은 단일 모델**을 표시합니다. 크레딧이 같으면 중앙 응답 시간을 비교합니다. 각 모델·사례에 v3 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
 
 ## 개발 문서
 
