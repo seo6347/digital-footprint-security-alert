@@ -6,13 +6,17 @@ import threading
 from email.message import Message
 from time import monotonic
 from types import SimpleNamespace
+from urllib.error import URLError
 
 import pytest
 
-from dfsa.contracts import ExplorationRequest, SearchResult, Subject
+from dfsa.contracts import (
+    DFSAResult, ExplorationRequest, ProfilingResponse, SearchResult, Source, Subject,
+)
 from dfsa.contracts.exploration import validate_navigation
 from dfsa.modules.explorer import runner
 from dfsa.modules.explorer.transport import DeadlineExceeded, PinnedHTTPS, SiteScope, _bounded_dns
+from dfsa.service import orchestrator, run_pipeline
 
 HOST = "https://lab.example.org"
 ROBOTS = HOST + "/robots.txt"
@@ -100,25 +104,78 @@ def test_bfs_uses_uncertain_seed_and_target_links_without_collecting_other_profi
     assert any(seed.decode("utf-8")[text.start:text.end] == "&amp;" for text in result.documents[0].texts)
 
 
-def test_redirect_convergence_keeps_a_seed_ids_and_one_document():
+def test_redirect_convergence_and_rediscovery_through_orchestrator(monkeypatch, v02_fixtures):
+    first = HOST + "/pages/first"
     alias = HOST + "/pages/alias"
     child = HOST + "/pages/another-alias"
+    group = HOST + "/pages/group"
     network = Network({
-        PEOPLE: Reply(b'<a href="another-alias">Research</a>'),
+        first: Reply(code=302, location="people"),
+        PEOPLE: Reply(b'<a href="another-alias">Research</a><a href="alias">About</a>'),
         alias: Reply(code=302, location="people"),
         child: Reply(code=301, location=PEOPLE),
+        group: Reply(b'<a href="another-alias">Research</a><a href="people">People</a>'),
     })
-    result = run(network, PEOPLE, alias)
-    assert len(result.documents) == 1
-    assert result.documents[0].source_id == "src_1"
-    assert result.attempted_source_ids == ("src_1",)
-    assert [(entry.source_id, entry.root_source_id, entry.status, entry.final_url)
+    seed_request = make_request(first, alias, group, PEOPLE)
+    result_by_stage = {}
+    counts = []
+
+    def search(request):
+        response = v02_fixtures["stage_responses"](request.request_id)[0]
+        query_id = next(query.query_id for query in response.queries if query.status == "success")
+        return response.model_copy(update={"results": [
+            seed.model_copy(update={"discovered_by": [{"query_id": query_id}]})
+            for seed in seed_request.search_results
+        ]})
+
+    def exploration(request):
+        result = runner.run_exploration(request)
+        result_by_stage["exploration"] = result
+        return result
+
+    def profiling(request):
+        assert [(doc.source_id, doc.original_url, doc.final_url) for doc in request.documents] == [
+            ("src_1", first, PEOPLE), ("src_3", group, group),
+        ]
+        return ProfilingResponse(
+            schema_version=request.schema_version, request_id=request.request_id, status="success",
+            sources=[
+                Source(source_id=doc.source_id, url=doc.final_url, processing_status="success",
+                       identity_status="uncertain")
+                for doc in request.documents
+            ],
+        )
+
+    monkeypatch.setattr(orchestrator, "run_search", search)
+    monkeypatch.setattr(orchestrator, "run_exploration", exploration)
+    monkeypatch.setattr(orchestrator, "run_profiling", profiling)
+    with runner.approved_exploration(
+        SiteScope(HOST + "/pages/"), robots_approved=True, network=network,
+        observer=lambda requests, robots: counts.append((requests, robots)),
+    ):
+        result = run_pipeline(seed_request.subject)
+    exploration_result = result_by_stage["exploration"]
+    assert result.status == "success" and not result.errors
+    assert result.stages.analysis == "not_started"
+    assert result.summary.visited_page_count == 4
+    assert [source.source_id for source in result.sources] == ["src_1", "src_3"]
+    assert len(exploration_result.documents) == 2
+    assert exploration_result.attempted_source_ids == ("src_1", "src_2", "src_3", "nav_src_0001")
+    assert [(entry.source_id, entry.parent_source_id, entry.root_source_id, entry.depth,
+             entry.url, entry.final_url, entry.status, entry.reason)
             for entry in result.navigation_history] == [
-        ("src_1", "src_1", "success", PEOPLE),
-        ("src_2", "src_2", "skipped", PEOPLE),
-        ("src_1", "src_1", "success", PEOPLE),
+        ("src_1", None, "src_1", 0, first, PEOPLE, "success", None),
+        ("src_2", None, "src_2", 0, alias, PEOPLE, "blocked", "duplicate_redirect"),
+        ("src_3", None, "src_3", 0, group, group, "success", None),
+        ("src_4", None, "src_4", 0, PEOPLE, PEOPLE, "skipped", "duplicate_page"),
+        ("nav_src_0001", "src_1", "src_1", 1, child, PEOPLE, "blocked", "duplicate_redirect"),
+        ("src_2", "src_1", "src_1", 1, alias, PEOPLE, "skipped", "duplicate_page"),
+        ("nav_src_0001", "src_3", "src_3", 1, child, PEOPLE, "skipped", "duplicate_page"),
+        ("src_1", "src_3", "src_3", 1, PEOPLE, PEOPLE, "skipped", "duplicate_page"),
     ]
-    assert [url for url, _, _ in network.calls] == [ROBOTS, PEOPLE, alias, child]
+    assert DFSAResult.model_validate_json(result.model_dump_json()) == result
+    assert [url for url, _, _ in network.calls] == [ROBOTS, first, PEOPLE, alias, group, child]
+    assert counts == [(6, 1)]
 
 
 def test_relative_link_uses_redirect_final_path_and_keeps_discovery_url():
@@ -298,6 +355,73 @@ def test_preflight_dns_timeout_does_not_count_as_an_http_attempt():
     assert result.status == "failed"
     assert result.errors[0].code == "timeout"
     assert not result.attempted_source_ids
+
+
+@pytest.mark.parametrize(("phase", "requests", "attempted", "error"), [
+    ("dns", [ROBOTS], (), "timeout"),
+    ("robots", [ROBOTS], (), "timeout"),
+    ("http", [ROBOTS, PEOPLE], ("src_1",), "timeout"),
+    ("redirect", [ROBOTS, PEOPLE], ("src_1",), "timeout"),
+    ("parse", [ROBOTS, PEOPLE], ("src_1",), "parse_deadline"),
+    ("parse_signal", [ROBOTS, PEOPLE], ("src_1",), "parse_deadline"),
+])
+def test_deadline_at_each_phase_is_reported_without_starting_more_work(
+    monkeypatch, phase, requests, attempted, error,
+):
+    now = [0]
+    target = HOST + "/pages/target"
+    parser = runner.parse_html
+
+    class ExpiringReply(Reply):
+        def read(self, size=-1):
+            now[0] = 5
+            # The HTTPS body reader wraps a socket timeout in URLError.
+            raise URLError(TimeoutError("HTTPS body read timed out"))
+
+    class LateRedirect(Reply):
+        def close(self):
+            super().close()
+            now[0] = 5
+
+    class ExpiringNetwork(Network):
+        def request(self, url, *, on_request, **kwargs):
+            if url == PEOPLE and phase == "dns":
+                now[0] = 5
+                raise DeadlineExceeded("DNS deadline exceeded")
+            return super().request(url, on_request=on_request, **kwargs)
+
+    def parse(fetched):
+        assert phase in ("parse", "parse_signal"), "Parsing started after a failed fetch"
+        now[0] = 5
+        if phase == "parse_signal":
+            raise DeadlineExceeded("Parsing deadline exceeded")
+        return parser(fetched)
+
+    monkeypatch.setattr(runner, "parse_html", parse)
+    if phase == "http":
+        page = ExpiringReply(b"<p>Late body</p>")
+    elif phase == "redirect":
+        page = LateRedirect(code=302, location=target)
+    else:
+        page = Reply(b"<p>Profile</p>")
+    robots = ExpiringReply(RULES, media="text/plain") if phase == "robots" else RULES
+    network = ExpiringNetwork({PEOPLE: page}, robots=robots)
+    counts = []
+    result = runner.explore(
+        make_request(PEOPLE, target), scope=SiteScope(HOST + "/pages/"),
+        robots_approved=True, network=network, limits=runner.Limits(deadline=5),
+        clock=lambda: now[0], observer=lambda requests, robots: counts.append((requests, robots)),
+    )
+    assert result.status == "failed" and result.limit_reached
+    assert not result.documents
+    assert result.attempted_source_ids == attempted
+    assert [detail.code for detail in result.errors] == [error]
+    expected_status = "parse_failed" if phase.startswith("parse") else "fetch_failed"
+    assert [(entry.source_id, entry.status) for entry in result.navigation_history] == [
+        ("src_1", expected_status), ("src_2", "skipped"),
+    ]
+    assert [url for url, _, _ in network.calls] == requests
+    assert counts == [(len(requests), 1)]
 
 
 def test_shared_page_keeps_both_seed_paths_without_a_second_fetch():

@@ -20,7 +20,7 @@ from dfsa.contracts import ErrorDetail, ExplorationRequest, ExplorationResult, N
 from ._types import FetchError, FetchFailure, FetchProblem, ParseFailure
 from .fetch import fetch_html
 from .parsing import parse_html
-from .transport import USER_AGENT, PinnedHTTPS, SiteScope, remaining
+from .transport import USER_AGENT, DeadlineExceeded, PinnedHTTPS, SiteScope, remaining
 from .url_policy import check_url_text
 
 _ROBOTS_LIMIT = 512 * 1024
@@ -142,7 +142,7 @@ class _Session:
         self.robots_requests = 0
         self.page_requested = False
         self.limit_reached = False
-        self.successful = {}
+        self.successful = set()
         self.rules = None
         self.rules_failure = None
         self.last_request = None
@@ -187,8 +187,12 @@ class _Session:
             except FetchProblem as exc:
                 self.rules_failure = (exc.kind, str(exc))
                 raise
-            except (URLError, OSError, http.client.HTTPException):
-                self.rules_failure = (FetchError.NETWORK_ERROR, "robots_unavailable")
+            except (OSError, http.client.HTTPException) as exc:
+                cause = exc.reason if isinstance(exc, URLError) else exc
+                self.rules_failure = (
+                    (FetchError.TIMEOUT, "robots_timeout") if isinstance(cause, TimeoutError)
+                    else (FetchError.NETWORK_ERROR, "robots_unavailable")
+                )
                 raise FetchProblem(*self.rules_failure) from None
         if not self.rules.can_fetch(url, _ROBOTS_AGENT):
             raise FetchProblem(FetchError.BLOCKED_URL, "robots_disallowed")
@@ -238,6 +242,7 @@ class _Session:
             return Protego.parse(text)
 
     def open(self, request, *, timeout):
+        remaining(self.page_deadline, self.clock)
         normalized = self.scope.prepare(request.full_url)
         if normalized in self.successful:
             raise _AcquiredPage(normalized)
@@ -254,6 +259,7 @@ def explore(request, *, scope, robots_approved, network, limits=Limits(), clock=
     errors = []
     attempts = {}
     seen = {}
+    duplicate_redirects = {}
     order = 0
     next_source = 0
     name = re.compile(r"(?<!\w)" + re.escape(_normalize(request.subject.name)) + r"(?!\w)")
@@ -304,7 +310,8 @@ def explore(request, *, scope, robots_approved, network, limits=Limits(), clock=
         if key in seen:
             previous = documents.get(seen[key])
             record(item, source_id, NavigationStatus.SKIPPED,
-                   final_url=previous.final_url if previous else None, reason="duplicate_page")
+                   final_url=previous.final_url if previous else duplicate_redirects.get(key),
+                   reason="duplicate_page")
             continue
         if (item.depth > limits.max_depth or session.pages >= limits.max_pages
                 or session.requests >= limits.max_requests or clock() >= session.deadline):
@@ -320,13 +327,11 @@ def explore(request, *, scope, robots_approved, network, limits=Limits(), clock=
                 user_agent=USER_AGENT, timeout=limits.page_timeout,
             )
         except _AcquiredPage as alias:
-            owner = session.successful[alias.url]
-            seen[key] = owner
-            if item.depth == 0:
-                # The frozen contract requires the original A ID on this root.
-                record(item, source_id, NavigationStatus.SKIPPED, final_url=alias.url, reason="duplicate_redirect")
-            else:
-                record(item, owner, NavigationStatus.SUCCESS, final_url=alias.url, reason="duplicate_redirect")
+            # The redirecting URL was requested, but policy stopped the chain
+            # before a second acquisition. Keep its own ID and resolved alias.
+            attempts[source_id] = None
+            duplicate_redirects[key] = alias.url
+            record(item, source_id, NavigationStatus.BLOCKED, final_url=alias.url, reason="duplicate_redirect")
             continue
         except _LimitReached as exc:
             session.limit_reached = True
@@ -350,20 +355,24 @@ def explore(request, *, scope, robots_approved, network, limits=Limits(), clock=
                 record(item, source_id, status, reason=fetched.kind.value)
                 errors.append(fetched.error)
             continue
-        document = parse_html(fetched) if clock() < session.page_deadline else None
-        if clock() >= session.page_deadline:
+        try:
+            remaining(session.page_deadline, clock)
+            document = parse_html(fetched)
+            remaining(session.page_deadline, clock)
+        except DeadlineExceeded:
             if clock() >= session.deadline:
                 session.limit_reached = True
             record(item, source_id, NavigationStatus.PARSE_FAILED, reason="parse_deadline")
             errors.append(ErrorDetail(code="parse_deadline", message="Parsing exceeded its deadline",
                                       retryable=False, source_id=source_id))
-        elif isinstance(document, ParseFailure):
+            continue
+        if isinstance(document, ParseFailure):
             record(item, source_id, NavigationStatus.PARSE_FAILED, reason=document.kind.value)
             errors.append(document.error)
         else:
             documents[source_id] = document
             final_key = scope.prepare(document.final_url)
-            session.successful[final_key] = source_id
+            session.successful.add(final_key)
             seen[final_key] = source_id
             record(item, source_id, NavigationStatus.SUCCESS, final_url=document.final_url)
             children(document, item)

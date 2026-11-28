@@ -153,6 +153,8 @@ python tests/e2e/live_v02.py --until exploration --details --live --consent-conf
 
 Production은 `DFSA_V02_EXPLORER_SCOPE`와 동의·승인 확인 후 설정한 `DFSA_V02_EXPLORER_ROBOTS_APPROVED=1`을 사용합니다. Live Runner는 같은 접근 정책과 HTTPS Transport를 호출합니다. 깊이 3, 페이지 접근 시도 30개, robots 및 redirect를 포함한 HTTP 요청 40회, HTML 2 MiB를 적용합니다. 결과의 방문 수는 요청이 확인된 고유 source ID 수이고, Live 보고서는 HTML 요청과 robots 요청을 따로 표시합니다. 첫 확보 문서와 탐색 경로는 별도로 관리합니다.
 
+실제 요청 후 이미 확보한 URL로 redirect되면 `blocked`(`duplicate_redirect`)로 기록하고 시작 URL의 source ID를 방문 수에 포함합니다. 확보 문서는 한 건만 유지합니다. 이미 확인한 경로를 다시 발견하면 `skipped`로 기록하고 HTTP 요청을 보내지 않습니다.
+
 페이지 단위 10초와 전체 90초 한도를 사용합니다. Explorer는 DNS 결과 대기에 남은 시간을 적용하고 HTTPS 응답 읽기가 지연되면 연결을 종료합니다. 이미 실행 중인 OS DNS 조회나 파서 호출은 즉시 중단할 수 없지만, 기한이 지난 응답은 결과에 포함하지 않으며 후속 요청을 시작하지 않습니다.
 
 A는 기존 `SerpApiProvider`를 사용합니다. Explorer는 승인된 검색 결과를 seed로 사용하며 `uncertain`도 탐색 후보가 됩니다. 링크의 접근 범위와 관련성은 별도로 확인하고 대상의 이름과 조직 문맥을 우선합니다. 개별 프로필은 대상과 연결되는 근거가 있는 링크를 따릅니다. 학교 LLM API 연결은 Module B 개발에서 다룹니다.
