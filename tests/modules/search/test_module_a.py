@@ -6,7 +6,7 @@ from dfsa.contracts.search import SearchOptions, SearchRequest
 from dfsa.modules.search.provider import ProviderResult, SearchProviderError
 from dfsa.modules.search.query_builder_v2 import build_queries_v2
 from dfsa.modules.search.relevance_v2 import assess_relevance
-from dfsa.modules.search.runner_v2 import run_search_v2
+from dfsa.modules.search.runner_v2 import run_search
 
 
 def test_build_queries_v2_spec_p0():
@@ -75,7 +75,7 @@ def test_run_search_v2_success_with_results(mock_provider_cls):
         options=SearchOptions(top_k=5),
     )
 
-    response = run_search_v2(request)
+    response = run_search(request)
 
     assert response.status == ModuleStatus("success")
     assert len(response.results) == 1
@@ -98,7 +98,7 @@ def test_run_search_v2_zero_results_is_success(mock_provider_cls):
         options=SearchOptions(top_k=5),
     )
 
-    response = run_search_v2(request)
+    response = run_search(request)
 
     assert response.status == ModuleStatus("success")
     assert response.results == []
@@ -127,7 +127,7 @@ def test_run_search_v2_error_without_results_is_failed(mock_provider_cls):
         options=SearchOptions(top_k=5),
     )
 
-    response = run_search_v2(request)
+    response = run_search(request)
 
     assert response.status == ModuleStatus("failed")
     assert response.results == []
@@ -150,7 +150,7 @@ def test_run_search_v2_provider_failed(mock_provider_cls):
         options=SearchOptions(top_k=5),
     )
 
-    response = run_search_v2(request)
+    response = run_search(request)
 
     assert response.status == ModuleStatus("failed")
     assert len(response.errors) > 0
@@ -169,7 +169,7 @@ def test_run_search_v2_empty_input(mock_build_queries):
         options=SearchOptions(top_k=5),
     )
 
-    response = run_search_v2(request)
+    response = run_search(request)
 
     assert response.status == ModuleStatus("failed")
     assert len(response.errors) > 0
