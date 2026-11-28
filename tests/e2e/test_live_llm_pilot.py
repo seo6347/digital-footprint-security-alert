@@ -19,15 +19,17 @@ def answer_for(case):
 
 
 class MockClient:
-    def __init__(self, case):
+    def __init__(self, case, *, answer=None, error=None):
         self.case = case
+        self.answer = answer if error or answer is not None else answer_for(case)
+        self.error = error
         self.calls = 0
 
     async def complete(self, instruction, data, schema, *, model=None):
         self.calls += 1
         assert instruction == pilot.INSTRUCTION
         assert data == self.case.input() and schema is pilot.PilotAnswer
-        return Completion(model, 11.0, value=answer_for(self.case), usage=Usage(4, 2, 6))
+        return Completion(model, 11.0, value=self.answer, error=self.error, usage=Usage(4, 2, 6))
 
 
 @pytest.mark.parametrize("case_id", pilot.CASES)
@@ -40,6 +42,71 @@ def test_mock_client_produces_domain_scores_from_synthetic_cases(case_id, offlin
     assert client.calls == 1 and report["usage"]["total_tokens"] == 6
     assert report["actual_credits"] is None
     assert "example.invalid" not in json.dumps(report)
+    assert "details" not in report
+
+
+def test_details_explain_representation_differences_without_changing_score(offline_async_runner):
+    case = pilot.CASES["clear-match"]
+    answer = answer_for(case)
+    for fact in answer.exposures:
+        fact.value = fact.evidence[0].quote
+    client = MockClient(case, answer=answer)
+    summary = offline_async_runner.run(pilot.pilot_call(client, pilot.MODELS[0], "clear-match"))
+    report = offline_async_runner.run(pilot.pilot_call(client, pilot.MODELS[0], "clear-match", details=True))
+    assert client.calls == 2  # A separate invocation per output mode.
+    details = report.pop("details")
+    assert report == summary
+    assert report["version"] == 3
+    assert report["score"]["areas"] == {
+        "identity": True, "schema": True, "extraction": False, "attribution": False, "evidence": False,
+    }
+    assert report["score"]["critical"] == ["unattributed_fact", "unsupported_evidence"]
+    assert report["score"]["correct_exposures"] == 0
+    assert details["response"] == answer.model_dump()
+    assert len(details["missing_exposures"]) == len(details["unexpected_exposures"]) == 3
+    assert not details["identity_evidence_mismatches"]
+    assert all(check["value_match"] == "possible_representation_difference" and not check["evidence_mismatches"]
+               for check in details["exposure_checks"])
+
+
+def test_details_report_wrong_source_and_individual_evidence_fields(offline_async_runner):
+    case = pilot.CASES["mixed-member-context"]
+    answer = answer_for(case)
+    answer.identity = "uncertain"
+    answer.identity_evidence[0].text_id = "t999"
+    advisor = answer.exposures[-1]
+    advisor.evidence[0].document_id = "other-doc"
+    advisor.evidence[0].block_id = "other-block"
+    advisor.evidence[0].quote = "Different quotation"
+    other_contact = next(unit for unit in case.units if unit.text_id == "t3")
+    answer.exposures.append(pilot.Fact(kind="email", value="paper-b@example.invalid", evidence=[
+        pilot.Reference(document_id=other_contact.document_id, block_id=other_contact.block_id,
+                        text_id=other_contact.text_id, quote=other_contact.text),
+    ]))
+    report = offline_async_runner.run(pilot.pilot_call(
+        MockClient(case, answer=answer), pilot.MODELS[0], "mixed-member-context", details=True,
+    ))
+    details = report["details"]
+    assert details["identity_mismatch"] == {"field": "identity", "expected": "confirmed", "actual": "uncertain"}
+    assert {item["reason"] for item in details["identity_evidence_mismatches"]} == {
+        "unknown_text_id", "missing_expected_reference",
+    }
+    assert {item["field"] for item in details["exposure_checks"][2]["evidence_mismatches"]} == {
+        "document_id", "block_id", "quote",
+    }
+    foreign_fact = details["exposure_checks"][-1]
+    assert foreign_fact["value_match"] == "unmatched_value"
+    assert {item["reason"] for item in foreign_fact["evidence_mismatches"]} == {
+        "outside_expected_evidence", "missing_expected_reference",
+    }
+
+
+def test_details_show_no_unvalidated_response_on_schema_failure(offline_async_runner):
+    client = MockClient(pilot.CASES["clear-match"], error="schema_error")
+    report = offline_async_runner.run(pilot.pilot_call(client, pilot.MODELS[0], "clear-match", details=True))
+    assert report["details"]["response"] is None
+    assert report["details"]["response_error"] == {"field": "response", "reason": "schema_error"}
+    assert len(report["details"]["expected"]["exposures"]) == 3
 
 
 def test_valid_reference_from_wrong_person_fails_attribution():
@@ -226,10 +293,22 @@ def test_default_does_not_start_session_even_with_a_key(monkeypatch, capsys):
     monkeypatch.setattr(pilot.MindlogicSession, "from_env", lambda **kwargs: pytest.fail("Network enabled"))
     assert pilot.main(BASE) == 0
     assert json.loads(capsys.readouterr().out)["gateway_calls"] == 0
+    assert pilot.main(BASE + ["--details"]) == 0
+    preview = json.loads(capsys.readouterr().out)
+    assert preview["gateway_calls"] == 0 and preview["details"]["response"] is None
+    assert preview["details"]["instruction"] == pilot.INSTRUCTION
+    assert preview["details"]["input"] == pilot.CASES["clear-match"].input()
+    assert preview["details"]["response_schema"] == pilot.PilotAnswer.model_json_schema()
 
 
-def test_manual_approval_invokes_exactly_one_call(monkeypatch, capsys, offline_async_runner):
-    client = MockClient(pilot.CASES["clear-match"])
+@pytest.mark.parametrize("details", [False, True])
+def test_manual_approval_invokes_exactly_one_call(monkeypatch, capsys, offline_async_runner, details):
+    case = pilot.CASES["clear-match"]
+    secret = "synthetic-test-key"
+    answer = answer_for(case)
+    answer.exposures[0].value = secret
+    client = MockClient(case, answer=answer)
+    monkeypatch.setenv("DFSA_LLM_API_KEY", secret)
 
     class Session:
         def run_sync(self, operation):
@@ -240,8 +319,13 @@ def test_manual_approval_invokes_exactly_one_call(monkeypatch, capsys, offline_a
         return Session()
 
     monkeypatch.setattr(pilot.MindlogicSession, "from_env", from_env)
-    assert pilot.main(BASE + ["--live", "--manual-budget", "--settled-pilot-credits", "0"]) == 0
+    flags = ["--live", "--manual-budget", "--settled-pilot-credits", "0"]
+    assert pilot.main(BASE + flags + (["--details"] if details else [])) == 0
     captured = capsys.readouterr()
     report = json.loads(captured.out)
     assert client.calls == 1 and report["actual_credits"] is None
     assert "may exceed" in captured.err
+    assert ("details" in report) is details
+    assert secret not in captured.out
+    if details:
+        assert report["details"]["response"]["exposures"][0]["value"] == "[REDACTED]"

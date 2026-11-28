@@ -201,6 +201,26 @@ try {
 
 전체 품질 기준을 충족하고 정산을 완료한 모델 중 **실측 크레딧 합계가 가장 낮은 단일 모델**을 표시합니다. 크레딧이 같으면 중앙 응답 시간을 비교합니다. 각 모델·사례에 v3 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
 
+### 합성 파일럿 상세 진단
+
+아래 명령은 네트워크 없이 시스템 지시, 합성 입력, JSON Schema와 기대 정답을 보여줍니다.
+
+```powershell
+python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match --details
+```
+
+API 키를 설정한 뒤 상세 진단 호출을 직접 승인하려면 Dashboard에서 정산한 **이번 파일럿의 누적 사용량**을 입력합니다. 한 번의 호출로 일반 점수와 검증된 구조화 응답을 함께 확인할 수 있습니다.
+
+```powershell
+$settled = Read-Host 'Dashboard에서 정산한 파일럿 누적 크레딧'
+python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match `
+    --live --manual-budget --settled-pilot-credits "$settled" --details
+```
+
+`details`에는 기대 정답, 검증된 응답, 정확히 일치하지 않아 누락·추가로 집계된 Exposure, Identity·Evidence 참조의 필드별 차이가 표시됩니다. `possible_representation_difference`는 라벨, 끝 마침표, 대소문자, 공백 등의 차이를 진단합니다. 해당 항목의 `evidence_mismatches`가 비어 있다면 표기 차이와 올바른 근거가 함께 보고된 것입니다. `outside_expected_evidence`는 합성 사례의 기대 근거 범위를 벗어난 참조입니다.
+
+`clear-match`는 지시에서 값을 그대로 복사하도록 하지만, 정답은 `Role:` 같은 라벨과 끝 마침표를 뺀 값이며 Evidence는 전체 원문을 요구합니다. 현재 채점기는 값이 정확히 일치하지 않으면 원문 참조가 정확해도 Attribution과 Evidence를 실패로 집계할 수 있습니다. 상세 진단은 이 차이를 설명하며 v3 지시·입력·Schema·점수는 유지합니다. 이전 요약에는 응답이 없어 상세 진단을 소급할 수 없습니다. 상세 출력은 합성 파일럿에서만 제공하며 검증되지 않은 응답과 API 키는 출력하지 않습니다.
+
 ## 개발 문서
 
 | 문서 | 역할 |

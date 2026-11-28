@@ -2,7 +2,9 @@
 
 import argparse
 import json
+import os
 import sys
+import unicodedata
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -201,10 +203,106 @@ def evaluate(case: Case, answer: PilotAnswer | None, error: str | None = None):
             "critical": critical, "correct_exposures": len(correct_facts), "required_exposures": required}
 
 
-async def pilot_call(client: LLMClient, selected_model: str, case_id: str):
+def _value_for_diagnosis(kind: str, value: str) -> str:
+    value = " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+    label, separator, unlabelled = value.partition(":")
+    if separator and label.strip() == kind:
+        value = unlabelled.strip()
+    return value.removesuffix(".").strip()
+
+
+def _diagnose_references(references, allowed_ids, units):
+    mismatches = []
+    for index, ref in enumerate(references):
+        unit = units.get(ref.text_id)
+        if unit is None:
+            mismatches.append({"index": index, "field": "text_id", "reason": "unknown_text_id"})
+            continue
+        if ref.text_id not in allowed_ids:
+            mismatches.append({"index": index, "field": "text_id", "reason": "outside_expected_evidence"})
+        for field, expected in (("document_id", unit.document_id), ("block_id", unit.block_id), ("quote", unit.text)):
+            if getattr(ref, field) != expected:
+                mismatches.append({"index": index, "field": field, "reason": "does_not_match_unit", "expected": expected})
+    for text_id in sorted(allowed_ids - {ref.text_id for ref in references}):
+        mismatches.append({"field": "text_id", "reason": "missing_expected_reference", "expected": text_id})
+    return mismatches
+
+
+def _pilot_details(case, answer=None, error=None):
+    units = {unit.text_id: unit for unit in case.units}
+
+    def reference(text_id):
+        unit = units[text_id]
+        return {"document_id": unit.document_id, "block_id": unit.block_id, "text_id": text_id, "quote": unit.text}
+
+    expected = {(kind, value): text_id for kind, value, text_id in case.facts}
+    details = {
+        "expected": {
+            "identity": case.identity, "identity_evidence": [reference(key) for key in sorted(case.identity_ids)],
+            "exposures": [{"kind": kind, "value": value, "evidence": [reference(key)]}
+                          for (kind, value), key in expected.items()],
+        },
+        "response": answer.model_dump(mode="json") if answer is not None else None,
+    }
+    if answer is None:
+        if error is not None:
+            details["response_error"] = {"field": "response", "reason": error}
+        return details
+
+    seen = set()
+    exposure_checks = []
+    unexpected = []
+    for index, fact in enumerate(answer.exposures):
+        key = (fact.kind, fact.value)
+        alternatives = [entry for entry in expected if entry[0] == fact.kind]
+        matches = [entry for entry in alternatives
+                   if _value_for_diagnosis(*entry) == _value_for_diagnosis(*key)]
+        if key in expected:
+            value_match = "exact"
+            possible_facts = [key]
+        elif matches:
+            value_match = "possible_representation_difference"
+            possible_facts = matches
+        else:
+            value_match = "unmatched_value" if alternatives else "unexpected_kind"
+            possible_facts = alternatives
+        duplicate = key in seen
+        if value_match != "exact" or duplicate:
+            unexpected.append({"index": index, "kind": fact.kind, "value": fact.value,
+                               "reason": "duplicate_exposure" if duplicate else value_match})
+        seen.add(key)
+        allowed_ids = {expected[entry] for entry in possible_facts}
+        exposure_checks.append({
+            "index": index, "value_match": value_match,
+            "expected_same_kind_values": [value for _, value in alternatives],
+            "evidence_mismatches": _diagnose_references(fact.evidence, allowed_ids, units),
+        })
+
+    details.update(
+        identity_mismatch=(None if answer.identity == case.identity else
+                           {"field": "identity", "expected": case.identity, "actual": answer.identity}),
+        identity_evidence_mismatches=_diagnose_references(answer.identity_evidence, case.identity_ids, units),
+        missing_exposures=[{"kind": kind, "value": value} for kind, value in expected if (kind, value) not in seen],
+        unexpected_exposures=unexpected,
+        exposure_checks=exposure_checks,
+    )
+    return details
+
+
+def _redact_key(value, key):
+    if isinstance(value, str):
+        return value.replace(key, "[REDACTED]")
+    if isinstance(value, list):
+        return [_redact_key(item, key) for item in value]
+    if isinstance(value, dict):
+        return {field: _redact_key(item, key) for field, item in value.items()}
+    return value
+
+
+async def pilot_call(client: LLMClient, selected_model: str, case_id: str, *, details=False):
     case = CASES[case_id]
     response = await client.complete(INSTRUCTION, case.input(), PilotAnswer, model=selected_model)
-    return {
+    report = {
         "version": PILOT_VERSION, "mode": "live", "case": case_id,
         "model": response.requested_model, "actual_model": response.actual_model,
         "max_completion_tokens": PILOT_TOKENS, "elapsed_ms": response.elapsed_ms,
@@ -212,6 +310,9 @@ async def pilot_call(client: LLMClient, selected_model: str, case_id: str):
         "score": evaluate(case, response.value, response.error),
         "actual_credits": None, "credit_source": None,
     }
+    if details:
+        report["details"] = _pilot_details(case, response.value, response.error)
+    return report
 
 
 def credits(value):
@@ -283,13 +384,14 @@ def main(argv=None):
     parser.add_argument("--case", choices=CASES)
     parser.add_argument("--summarize", type=Path, nargs="+", metavar="REPORT")
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--details", action="store_true", help="Display local diagnostics for synthetic cases")
     budget = parser.add_mutually_exclusive_group()
     budget.add_argument("--manual-budget", action="store_true")
     budget.add_argument("--verified-call-cap", help="Maximum charge confirmed by the school")
     parser.add_argument("--settled-pilot-credits", help="Reconciled cumulative pilot charge before this call")
     args = parser.parse_args(argv)
     if args.summarize:
-        if (args.model or args.case or args.live or args.manual_budget or args.verified_call_cap is not None
+        if (args.model or args.case or args.live or args.details or args.manual_budget or args.verified_call_cap is not None
                 or args.settled_pilot_credits is not None):
             parser.error("--summarize must be used by itself")
         try:
@@ -319,7 +421,15 @@ def main(argv=None):
                 session = MindlogicSession.from_env(model=args.model, max_completion_tokens=PILOT_TOKENS)
             except ValueError:
                 parser.error("A configured school Gateway key is required")
-            report = session.run_sync(lambda client: pilot_call(client, args.model, args.case))
+            report = session.run_sync(lambda client: pilot_call(client, args.model, args.case, details=args.details))
+            if args.details and (key := os.environ.get("DFSA_LLM_API_KEY", "").strip()):
+                report["details"] = _redact_key(report["details"], key)
+        elif args.details:
+            case = CASES[args.case]
+            report["details"] = {
+                **_pilot_details(case), "instruction": INSTRUCTION, "input": case.input(),
+                "response_schema": PilotAnswer.model_json_schema(),
+            }
     print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
     return int(bool(report.get("error")))
 
