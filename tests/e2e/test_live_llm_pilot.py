@@ -35,7 +35,7 @@ def test_mock_client_produces_domain_scores_from_synthetic_cases(case_id, offlin
     client = MockClient(pilot.CASES[case_id])
     report = offline_async_runner.run(pilot.pilot_call(client, pilot.MODELS[0], case_id))
     assert report["score"]["areas"] == dict.fromkeys(pilot.AREAS, True)
-    assert report["score"]["correct"] == report["score"]["required"]
+    assert report["score"]["correct_exposures"] == report["score"]["required_exposures"] == len(pilot.CASES[case_id].facts)
     assert not report["score"]["critical"]
     assert client.calls == 1 and report["usage"]["total_tokens"] == 6
     assert report["actual_credits"] is None
@@ -62,7 +62,32 @@ def test_correct_fact_with_wrong_block_fails_evidence_only():
     answer.exposures[0].evidence[0].block_id = "b2"
     result = pilot.evaluate(case, answer)
     assert result["areas"] == dict.fromkeys(pilot.AREAS, True) | {"evidence": False}
-    assert result["correct"] < result["required"] and "unsupported_evidence" in result["critical"]
+    assert result["correct_exposures"] < result["required_exposures"]
+    assert "unsupported_evidence" in result["critical"]
+
+
+def test_clear_match_requires_explicit_advisor_with_matching_evidence():
+    case = pilot.CASES["clear-match"]
+    answer = answer_for(case)
+    advisor = next(fact for fact in answer.exposures if fact.kind == "advisor")
+    assert advisor.value == "Pilot Person C"
+    assert advisor.evidence[0].quote == "Advisor: Pilot Person C."
+    assert pilot.evaluate(case, answer)["correct_exposures"] == 3
+    answer.exposures.remove(advisor)
+    score = pilot.evaluate(case, answer)
+    assert score["areas"]["extraction"] is False
+    assert score["correct_exposures"] == 2 and score["required_exposures"] == 3
+    assert not score["critical"]
+
+
+@pytest.mark.parametrize("identity", ["uncertain", "rejected"])
+def test_exposure_without_confirmed_identity_is_critical(identity):
+    case = pilot.CASES["clear-match"]
+    answer = answer_for(case).model_copy(update={"identity": identity})
+    score = pilot.evaluate(case, answer)
+    assert score["areas"]["identity"] is False
+    assert score["areas"]["extraction"] is True
+    assert score["critical"] == ["exposure_without_confirmed_identity"]
 
 
 def test_injection_and_false_identity_confirmation_block_recommendation():
@@ -88,6 +113,35 @@ def test_summary_only_ranks_complete_qualified_and_settled_models(offline_async_
     assert pilot.summarize(reports[1:])["recommended_among_complete_settled_models"] == pilot.MODELS[1]
     with pytest.raises(ValueError, match="one result per model"):
         pilot.summarize([reports[0], reports[0]])
+    with pytest.raises(ValueError, match="same pilot"):
+        pilot.summarize([dict(reports[0], version=1)])
+
+
+@pytest.mark.parametrize(("problem", "correct_exposures"), [
+    ("identity", 7), ("schema", 7), ("missing_advisor", 6),
+])
+def test_recommendation_requires_independent_identity_schema_and_exposure_gates(
+    problem, correct_exposures, offline_async_runner,
+):
+    reports = []
+    for case_id, case in pilot.CASES.items():
+        report = offline_async_runner.run(pilot.pilot_call(MockClient(case), pilot.MODELS[0], case_id))
+        if case_id == "name-only" and problem == "identity":
+            answer = answer_for(case).model_copy(update={"identity": "rejected"})
+            report["score"] = pilot.evaluate(case, answer)
+        elif case_id == "name-only" and problem == "schema":
+            report["score"] = pilot.evaluate(case, None, "schema_error")
+        elif case_id == "clear-match" and problem == "missing_advisor":
+            answer = answer_for(case)
+            answer.exposures = [fact for fact in answer.exposures if fact.kind != "advisor"]
+            report["score"] = pilot.evaluate(case, answer)
+        reports.append(dict(report, actual_credits="1", credit_source="dashboard"))
+    assert not any(report["score"]["critical"] for report in reports)
+    summary = pilot.summarize(reports)
+    row = summary["models"][0]
+    assert row["correct_exposures"] == correct_exposures and row["required_exposures"] == 7
+    assert row["meets_quality"] is False
+    assert summary["recommended_among_complete_settled_models"] is None
 
 
 BASE = ["--model", "gpt-5.4-nano", "--case", "clear-match"]

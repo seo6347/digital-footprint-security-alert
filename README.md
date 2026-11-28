@@ -197,7 +197,9 @@ try {
 
 파일럿은 전 모델에 생성 토큰 4096과 동일한 Schema를 사용합니다. 보고서의 `score.areas`에는 Identity, Extraction, 정보 귀속, Evidence, Schema별 결과가 나오며, `usage`와 `elapsed_ms`에는 보고된 토큰과 실행 시간이 나옵니다. Timeout도 청구될 수 있습니다. 동일한 Dashboard 범위에서 호출 전후 차감액을 대조하고, 확인된 해당 호출의 실측값만 로컬 JSON의 `actual_credits`에 입력합니다. `credit_source`는 `dashboard` 또는 `gateway_usage`로 표시합니다. 다른 사용량과 분리할 수 없으면 두 값은 `null`로 유지합니다. [학교 사용량 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/usage) · [학교 잔액 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/credits)
 
-`python tests/e2e/live_llm_pilot.py --summarize <보고서1> <보고서2>`는 영역별 통과 건수, 토큰, 중앙 응답 시간과 실측 크레딧을 비교합니다. 동일 사례를 완료하고 품질 기준을 충족한 정산 완료 모델 중 가장 경제적인 단일 모델을 표시합니다. 각 모델·사례의 대표 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
+`python tests/e2e/live_llm_pilot.py --summarize <보고서1> <보고서2>`는 영역별 통과 건수, 토큰, 중앙 응답 시간과 실측 크레딧을 비교합니다. 모델 선정에는 6개 사례 모두에서 Identity 정답과 Schema 통과, 치명적 오류 0건, 필수 Exposure 추출률 90% 이상이 필요합니다. Identity 점수는 추출률에 포함하지 않으며, 올바른 값과 Evidence가 함께 있어야 Exposure 한 건으로 셉니다. Identity가 `confirmed`가 아닌 응답에 Exposure가 있으면 치명적 오류입니다. `clear-match`는 명시적 지도 관계를 포함합니다. 현재 필수 Exposure가 7건이므로 90%를 충족하려면 7건을 모두 찾아야 합니다.
+
+조건을 충족하고 정산을 완료한 모델 중 가장 경제적인 단일 모델을 표시합니다. 각 모델·사례에 최신 버전 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
 
 ## 개발 문서
 
