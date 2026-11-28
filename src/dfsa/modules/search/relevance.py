@@ -10,7 +10,6 @@ import re
 import unicodedata
 from urllib.parse import parse_qsl, unquote, urlsplit
 
-
 from dfsa._v01.contracts.common import Subject
 from dfsa._v01.contracts.search import Relevance
 
@@ -71,7 +70,7 @@ def assess_relevance(
 
     No page fetching or identity verification is performed.
     """
-        # Parse query values separately so URL separators such as "="
+    # Parse query values separately so URL separators such as "="
     # do not interfere with email boundary checks.
     # parse_qsl already decodes percent-encoded query values.
     query_values = [
@@ -88,7 +87,6 @@ def assess_relevance(
         snippet or "",
         *query_values,
     )
-
 
     name_match = any(
         _contains_term(field, subject.name)
