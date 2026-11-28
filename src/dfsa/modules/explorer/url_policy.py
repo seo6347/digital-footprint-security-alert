@@ -55,8 +55,12 @@ def _check_ip(value: str) -> None:
         raise FetchProblem(FetchError.BLOCKED_URL, "Non-public or platform IP address")
 
 
-def validate_url(url: str, *, resolver: Resolver | None = None) -> str:
-    """Return the exact normalized URL to request, or fail closed before HTTP."""
+def validate_url(url: str, *, resolver: Resolver | None = None, resolve: bool = True) -> str:
+    """Normalize URL syntax, optionally checking all resolved addresses.
+
+    Only use resolve=False for scope and identity checks. Validate the DNS
+    answers again at the transport boundary before connecting.
+    """
     check_url_text(url)
     try:
         parts = urlsplit(url)
@@ -97,7 +101,7 @@ def validate_url(url: str, *, resolver: Resolver | None = None) -> str:
                 raise ValueError("Non-standard numeric IP representation")
         else:
             _check_ip(str(literal))
-        if literal is None:
+        if literal is None and resolve:
             answers = (resolver or socket.getaddrinfo)(host, expected_port, type=socket.SOCK_STREAM)
             if not answers:
                 raise FetchProblem(FetchError.DNS_ERROR, "DNS returned no addresses")

@@ -7,6 +7,7 @@ import socket
 from dataclasses import replace
 from email.message import Message
 from types import SimpleNamespace
+from time import monotonic
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request
 
@@ -16,6 +17,8 @@ import live_v02
 import live_v02_transport
 from dfsa._documents import ParsedLink
 from dfsa.contracts import ErrorDetail
+from dfsa.modules.explorer import runner as explorer_runner
+from dfsa.modules.explorer.transport import SiteScope
 from dfsa.service import orchestrator
 
 APPROVALS = ("--live", "--consent-confirmed", "--scope-approved")
@@ -48,6 +51,8 @@ def configure(monkeypatch, v02_fixtures):
 
 def invoke(until, capsys, *, site=SITE, details=False):
     flags = ["--details"] if details else []
+    if until != "search":
+        flags.append("--robots-approved")
     code = live_v02.main([*APPROVALS, "--site-url", site, "--until", until, *flags])
     output = capsys.readouterr()
     assert not output.err
@@ -106,7 +111,7 @@ def test_search_only_does_not_require_an_explorer_scope(configure, capsys):
     imports, _, _ = configure
     assert live_v02.main([*APPROVALS, "--until", "search"]) == 0
     assert json.loads(capsys.readouterr().out)["stages"]["search"]["status"] == "success"
-    assert live_v02.main([*APPROVALS, "--until", "exploration"]) == 2
+    assert live_v02.main([*APPROVALS, "--until", "exploration", "--robots-approved"]) == 2
     assert "Invalid live configuration" in capsys.readouterr().out
     assert imports == ["search"]
 
@@ -194,29 +199,44 @@ def test_search_output_reaches_explorer_unchanged_even_if_candidate_is_outside_s
     "https://lab.example.org/people-elsewhere/a", "https://lab.example.org/people/%2e%2E/outside",
     "https://lab.example.org/people/a%2Fb", "https://lab.example.org/people/%252e%252e/outside",
 ])
-def test_redirect_scope_is_checked_before_transport(url, monkeypatch):
-    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
-    transport.stage = "exploration"
-    monkeypatch.setattr(transport, "_request", lambda *args: pytest.fail("HTTP attempted"))
+def test_redirect_scope_is_checked_before_transport(url):
     with pytest.raises(live_v02_transport.FetchProblem, match="approved HTTPS scope"):
-        transport.open(Request(url), timeout=3)
-    assert transport.html_requests == 0
+        SiteScope(SITE).prepare(url)
 
 
-def test_explorer_fetch_reports_unapproved_candidates_without_http(monkeypatch):
-    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
-    transport.stage = "exploration"
-    monkeypatch.setattr(transport, "_resolve", lambda *args, **kwargs: pytest.fail("DNS attempted"))
-    monkeypatch.setattr(transport, "_request", lambda *args: pytest.fail("HTTP attempted"))
-    candidate = SimpleNamespace(source_id="src_other", url="https://unapproved.example.org/people/a")
-    with transport.install():
-        result = live_v02_transport.fetch.fetch_html(candidate)
-    assert result.kind == live_v02_transport.FetchError.BLOCKED_URL
-    assert transport.html_requests == 0
+def test_explorer_live_uses_production_callable_and_transport(configure, capsys, monkeypatch, v02_fixtures):
+    _, _, handlers = configure
+    handlers["run_exploration"] = explorer_runner.run_exploration
+    seen = []
+
+    class Network:
+        def request(self, url, *, deadline, headers, on_request):
+            seen.append((url, headers["User-Agent"]))
+            on_request()
+            response = io.BytesIO(b"User-agent: DFSA\nAllow: /people/" if url.endswith("robots.txt")
+                                  else b"<html><title>Fixture</title><p>Fixture body</p></html>")
+            response.code = 200
+            response.headers = Message()
+            response.headers["Content-Type"] = "text/plain" if url.endswith("robots.txt") else "text/html"
+            return response
+
+    monkeypatch.setattr(live_v02_transport.LiveTransport, "network", lambda self: Network())
+    code, report = invoke("exploration", capsys)
+    assert code == 0
+    assert seen == [("https://lab.example.org/robots.txt", "DFSA/0.2"), (v02_fixtures["URL"], "DFSA/0.2")]
+    assert report["robots_requests"] == report["html_requests"] == 1
+    assert report["stages"]["exploration"]["output"]["documents"] == 1
+
+
+def test_explorer_requires_explicit_robots_approval(configure, capsys):
+    imports, _, _ = configure
+    assert live_v02.main([*APPROVALS, "--until", "exploration", "--site-url", SITE]) == 2
+    assert "requires approval" in capsys.readouterr().out
+    assert imports == []
 
 
 def test_host_pinning_uses_checked_dns_preserving_tls_hostname(monkeypatch):
-    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
+    transport = live_v02_transport.LiveTransport(SiteScope(SITE))
     transport.stage = "exploration"
     addresses = []
     tls_hosts = []
@@ -230,9 +250,11 @@ def test_host_pinning_uses_checked_dns_preserving_tls_hostname(monkeypatch):
             tls_hosts.append(host)
             self.sock = None
 
+        def connect(self):
+            self.sock = self._create_connection(("lab.example.org", 443), 3)
+
         def request(self, method, path, *, headers):
             assert method == "GET" and path == "/people/profile"
-            self.sock = self._create_connection(("lab.example.org", 443), 3)
 
         def getresponse(self):
             return SimpleNamespace(status=200, headers=Message(), read=lambda size: b"", close=lambda: None)
@@ -243,7 +265,7 @@ def test_host_pinning_uses_checked_dns_preserving_tls_hostname(monkeypatch):
 
     monkeypatch.setattr(live_v02_transport.http.client, "HTTPSConnection", Connection)
     with transport.install():
-        with transport.open(Request("https://lab.example.org/people/profile"), timeout=3):
+        with transport.network().request("https://lab.example.org/people/profile", deadline=monotonic() + 3, headers={}):
             with pytest.raises(live_v02_transport.LivePolicyError):
                 socket.create_connection(("unapproved.example.org", 443))
     assert tls_hosts == ["lab.example.org"]
@@ -251,7 +273,7 @@ def test_host_pinning_uses_checked_dns_preserving_tls_hostname(monkeypatch):
 
 
 def test_search_request_and_response_are_forwarded_without_rewriting(monkeypatch):
-    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
+    transport = live_v02_transport.LiveTransport(SiteScope(SITE))
     transport.stage = "search"
     responses = [
         "https://lab.example.org/people/a", "https://lab.example.org/other",
@@ -264,7 +286,7 @@ def test_search_request_and_response_are_forwarded_without_rewriting(monkeypatch
 
     url = "https://serpapi.com/search.json?engine=google&q=synthetic%20name&num=10"
 
-    def request(actual_url, timeout, limit, headers):
+    def request(actual_url, timeout, headers):
         assert actual_url == url
         parts = urlsplit(actual_url)
         assert parts.hostname == "serpapi.com"
@@ -286,26 +308,25 @@ def test_argument_errors_do_not_echo_raw_arguments(capsys):
 
 
 def test_private_dns_fails_before_https_connection(monkeypatch):
-    transport = live_v02_transport.LiveTransport(live_v02_transport.SiteScope(SITE))
+    transport = live_v02_transport.LiveTransport(SiteScope(SITE))
     transport.stage = "exploration"
     monkeypatch.setattr(transport, "_resolve", lambda host, port, **kwargs: [
         (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", port)),
     ])
     monkeypatch.setattr(live_v02_transport.http.client, "HTTPSConnection",
                         lambda *args, **kwargs: pytest.fail("HTTPS connection created"))
-    with pytest.raises(live_v02_transport.LivePolicyError, match="DNS"):
-        transport.open(Request("https://lab.example.org/people/profile"), timeout=3)
+    with pytest.raises(live_v02_transport.FetchProblem, match="Non-public"):
+        transport.network().request("https://lab.example.org/people/profile", deadline=monotonic() + 3, headers={})
 
 
 def test_scope_can_allow_one_page_and_blocks_network_in_profiling():
-    scope = live_v02_transport.SiteScope("https://lab.example.org/people/profile")
+    scope = SiteScope("https://lab.example.org/people/profile")
     assert scope.contains("https://lab.example.org/people/profile")
     assert not scope.contains("https://lab.example.org/people/profile/related")
     transport = live_v02_transport.LiveTransport(scope)
     transport.stage = "profiling"
-    request = Request("https://lab.example.org/people/profile")
     with transport.install(), pytest.raises(live_v02_transport.LivePolicyError):
-        transport.open(request, timeout=3)
+        socket.create_connection(("lab.example.org", 443))
 
 
 def test_details_are_kept_out_of_redirected_output(configure, capsys, monkeypatch):

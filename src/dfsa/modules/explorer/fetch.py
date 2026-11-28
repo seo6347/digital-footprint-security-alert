@@ -8,6 +8,7 @@ import http.client
 import math
 import socket
 import ssl
+from collections.abc import Callable
 from contextlib import closing
 from typing import Protocol
 from urllib.error import HTTPError, URLError
@@ -66,7 +67,8 @@ def _http_problem(status: int) -> FetchError:
 def fetch_html(
     source: _FetchSource, *, timeout: float = 10, max_redirects: int = 5,
     max_body_bytes: int = 2 * 1024 * 1024, opener=None,
-    resolver: Resolver | None = None,
+    resolver: Resolver | None = None, prepare_url: Callable[[str], str] | None = None,
+    user_agent: str = "DFSA/0.1",
 ) -> FetchedHTML | FetchFailure:
     """Fetch one source without mutating it; expected failures are return values.
 
@@ -101,13 +103,14 @@ def fetch_html(
         redirects = 0
         while True:
             status = None
-            current = validate_url(current, resolver=resolver)
+            current = (prepare_url(current) if prepare_url is not None
+                       else validate_url(current, resolver=resolver))
             if current in seen:
                 raise FetchProblem(FetchError.REDIRECT_LIMIT, "Redirect cycle")
             seen.add(current)
             request = Request(current, method="GET", headers={
                 "Accept": "text/html, application/xhtml+xml", "Accept-Encoding": "identity",
-                "User-Agent": "DFSA/0.1",
+                "User-Agent": user_agent,
             })
             try:
                 response = client.open(request, timeout=timeout)

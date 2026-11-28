@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from collections import Counter
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import nullcontext, redirect_stderr, redirect_stdout
 from importlib import import_module
 from pathlib import Path
 from time import perf_counter
@@ -22,9 +22,11 @@ if __name__ == "__main__":
 
 from dfsa.contracts import ExplorationResult, StageStatus, Subject
 from dfsa.modules.explorer._types import FetchError
+from dfsa.modules.explorer.runner import approved_exploration
+from dfsa.modules.explorer.transport import SiteScope
 from dfsa.service import orchestrator
 
-from live_v02_transport import LivePolicyError, LiveTransport, PolicyReason, SiteScope
+from live_v02_transport import LivePolicyError, LiveTransport, PolicyReason
 
 MODULES = {
     "search": "dfsa.modules.search.runner_v2",
@@ -176,7 +178,7 @@ def _redact_details(data, secrets, original_html):
     return data
 
 
-def _run(subject, until, transport, *, details=False):
+def _run(subject, until, transport, *, robots_approved=False, details=False):
     selected = STAGES[:STAGES.index(until) + 1]
     reports = {
         stage: {"status": "not_started" if stage in selected else "out_of_scope", "elapsed_ms": None}
@@ -208,7 +210,15 @@ def _run(subject, until, transport, *, details=False):
             start = perf_counter()
             phase = "module_execution"
             try:
-                response = function(request)
+                approval = (
+                    approved_exploration(
+                        transport.scope, robots_approved=robots_approved,
+                        network=transport.network(), observer=transport.record_exploration,
+                    )
+                    if stage == "exploration" else nullcontext()
+                )
+                with approval:
+                    response = function(request)
                 returned.add(stage)
                 phase = "response_validation"
                 return response
@@ -306,6 +316,7 @@ def _run(subject, until, transport, *, details=False):
         "elapsed_ms": (perf_counter() - start) * 1000,
         "stages": reports,
         "search_requests": transport.search_requests, "html_requests": transport.html_requests,
+        "robots_requests": transport.robots_requests,
     }
     if outcome == "not_connected":
         report["expected_callable"] = f"{MODULES[problem_stage]}.run_{problem_stage}"
@@ -319,10 +330,14 @@ def main(argv=None):
     parser.add_argument("--consent-confirmed", action="store_true", help="Confirm target consent")
     parser.add_argument("--scope-approved", action="store_true", help="Confirm approval of site and providers")
     parser.add_argument("--site-url", help="Approved HTTPS page or subtree, required for Explorer and later")
+    parser.add_argument("--robots-approved", action="store_true", help="Confirm same-host robots.txt approval")
     parser.add_argument("--details", action="store_true", help="Show sensitive stage output in a local terminal")
     args = parser.parse_args(argv)
     if not (args.live and args.consent_confirmed and args.scope_approved):
         print("Live execution requires --live, --consent-confirmed and --scope-approved.")
+        return 2
+    if args.until != "search" and not args.robots_approved:
+        print("Explorer requires approval for same-host /robots.txt and --robots-approved.")
         return 2
     if args.details and not sys.stdout.isatty():
         print("Detailed output requires a local terminal. Summary output is available without --details.")
@@ -336,7 +351,9 @@ def main(argv=None):
         print("Invalid live configuration. Set the subject environment variable and approved HTTPS scope.")
         return 2
 
-    report, exit_code = _run(subject, args.until, LiveTransport(scope), details=args.details)
+    report, exit_code = _run(
+        subject, args.until, LiveTransport(scope), robots_approved=args.robots_approved, details=args.details,
+    )
     print(json.dumps(report, ensure_ascii=not args.details, indent=2 if args.details else None))
     return exit_code
 

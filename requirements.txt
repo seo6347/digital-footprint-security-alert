@@ -2,3 +2,4 @@ pydantic[email]>=2,<3
 pytest>=8,<10
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
+Protego>=0.7,<1

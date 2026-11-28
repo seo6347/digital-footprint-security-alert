@@ -12,8 +12,8 @@ v0.2 개발은 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기
 
 | 영역 | v0.2 구현 상태 및 후속 범위 |
 | --- | --- |
-| Search | 선택 이메일과 검색 Contract 구현. 실제 v0.2 SerpApi 검색은 후속 |
-| Page Explorer | 문서 확보 코드 재사용 가능, 독립 호출 경계 구현. 다중 페이지 탐색은 후속 |
+| Search | 이름·학교 기반 v0.2 SerpApi 검색 및 예비 관련성 판단 구현 |
+| Page Explorer | 승인 범위 내 다중 페이지 탐색, robots 확인, 원문·탐색 이력 보존 구현 |
 | Profiling | 문서 입력과 Exposure/Evidence Contract 구현. Rule + LLM 처리는 후속 |
 | Analysis | Profile·Graph·교육 사례·대응 방안 Contract 구현. 생성 로직은 후속 |
 | Orchestrator | 검색·탐색·Profiling·Analysis 호출 제어, 실행 시간, DFSAResult 구현 |
@@ -142,16 +142,22 @@ print(result.model_dump_json(indent=2))
 
 ```powershell
 python tests/e2e/live_v02.py --until search --live --consent-confirmed --scope-approved
-python tests/e2e/live_v02.py --until exploration --details --live --consent-confirmed --scope-approved --site-url https://approved.example.org/research/
+python tests/e2e/live_v02.py --until exploration --details --live --consent-confirmed --scope-approved --robots-approved --site-url https://approved.example.org/research/
 ```
 
 `--until`은 `search`, `exploration`, `profiling`, `analysis` 중 하나입니다. 위 연결 표의 실제 callable을 단계가 필요해질 때 불러옵니다. `analysis`는 전체 Orchestrator를 실행합니다. 중간 단계에서 멈출 때도 같은 Orchestrator의 응답 및 참조 검증을 적용합니다. 미연결 단계에서는 `not_connected`와 필요한 callable을 표시합니다. 정상 0건 등으로 후속 단계 입력이 없으면 `not_started`를 유지합니다.
 
 검색은 승인된 SerpApi에 1회 요청합니다. 실행기는 Module A의 검색어, 요청 파라미터 및 응답을 그대로 전달하므로 승인 사이트 밖의 URL도 검색 결과에서 확인할 수 있습니다.
 
-`--site-url`은 Explorer 이후를 실행할 때 필요합니다. 정확한 HTTPS 호스트의 한 페이지를 지정하고, 경로가 `/`로 끝나면 해당 하위 경로를 포함합니다. 호스트만 지정하면 전체 호스트가 범위가 되며, 승인에는 해당 경로에 필요한 쿼리 변형도 포함됩니다. Explorer의 Fetch 어댑터만 이 범위를 적용합니다. 각 HTTP hop을 검사하고 검증된 공개 IP에 연결하며 원래 호스트로 TLS를 검증합니다. HTML 요청 상한은 redirect 포함 40회, 응답당 상한은 2 MiB입니다.
+`--site-url`은 Explorer 이후를 실행할 때 필요합니다. 정확한 HTTPS 호스트의 한 페이지를 지정하고, 경로가 `/`로 끝나면 해당 하위 경로를 포함합니다. 호스트만 지정하면 전체 호스트가 범위가 되며, 승인에는 해당 경로에 필요한 쿼리 변형도 포함됩니다. Explorer가 각 HTTP hop에서 이 범위를 확인하고 공개 DNS 검증, IP 고정 및 원래 호스트의 TLS 검증을 수행합니다. 같은 호스트의 정확한 `/robots.txt`는 별도 승인을 받고 `--robots-approved`로 확인합니다. 확인 불가 또는 redirect된 robots 규칙을 근거로 페이지 요청을 허용하지 않습니다.
 
-신규 A는 기존 `SerpApiProvider`, Explorer는 기존 `fetch_html`의 기본 opener를 통해 연결합니다. 검토된 모듈의 해당 연결만 허용하며, 학교 LLM API 연결은 Module B 개발 단계에서 다룹니다.
+Production은 `DFSA_V02_EXPLORER_SCOPE`와 동의·승인 확인 후 설정한 `DFSA_V02_EXPLORER_ROBOTS_APPROVED=1`을 사용합니다. Live Runner는 같은 접근 정책과 HTTPS Transport를 호출합니다. 깊이 3, 페이지 접근 시도 30개, robots 및 redirect를 포함한 HTTP 요청 40회, HTML 2 MiB를 적용합니다. 결과의 방문 수는 요청이 확인된 고유 source ID 수이고, Live 보고서는 HTML 요청과 robots 요청을 따로 표시합니다. 첫 확보 문서와 탐색 경로는 별도로 관리합니다.
+
+실제 요청 후 이미 확보한 URL로 redirect되면 `blocked`(`duplicate_redirect`)로 기록하고 시작 URL의 source ID를 방문 수에 포함합니다. 확보 문서는 한 건만 유지합니다. 이미 확인한 경로를 다시 발견하면 `skipped`로 기록하고 HTTP 요청을 보내지 않습니다.
+
+페이지 단위 10초와 전체 90초 한도를 사용합니다. Explorer는 DNS 결과 대기에 남은 시간을 적용하고 HTTPS 응답 읽기가 지연되면 연결을 종료합니다. 이미 실행 중인 OS DNS 조회나 파서 호출은 즉시 중단할 수 없지만, 기한이 지난 응답은 결과에 포함하지 않으며 후속 요청을 시작하지 않습니다.
+
+A는 기존 `SerpApiProvider`를 사용합니다. Explorer는 승인된 검색 결과를 seed로 사용하며 `uncertain`도 탐색 후보가 됩니다. 링크의 접근 범위와 관련성은 별도로 확인하고 대상의 이름과 조직 문맥을 우선합니다. 개별 프로필은 대상과 연결되는 근거가 있는 링크를 따릅니다. 학교 LLM API 연결은 Module B 개발에서 다룹니다.
 
 기본 JSON은 단계별 상태·시간·건수·분류 및 안전한 오류 코드만 보여줍니다. 실제 내용을 보려면 로컬 터미널에서 `--details`를 지정합니다. 검색어·URL, 탐색 이력, Exposure·Evidence와 C의 분석 결과에 동의 대상의 정보가 포함될 수 있습니다. 상세 출력은 터미널에서만 제공하며 API 키와 URL 자격 증명을 가리고 원문 HTML은 제외합니다. 예외는 발생 단계, 진단 코드, 검증 오류 유형이나 HTTP 상태만 표시합니다.
 

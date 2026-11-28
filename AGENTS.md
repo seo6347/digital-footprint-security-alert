@@ -71,7 +71,8 @@ README는 프로젝트 소개용, CONTRIBUTING은 팀원 정보 관리용이다.
 | `src/dfsa/modules/search/`           | Module A 구현 위치 — 정유채 담당                         | 🟡       |
 | `src/dfsa/_documents.py` | Explorer와 B가 공유하는 내부 문서 자료형 | 🟡 |
 | `src/dfsa/modules/profiling/` | Module B 구현 — 서동균 | 🟡 |
-| `src/dfsa/modules/explorer/` | HTML Fetch, URL Policy, Parsing — 서동균 | 🟡 |
+| `src/dfsa/modules/explorer/` | Fetch, Parsing, 승인 범위·HTTPS Transport, 다중 페이지 탐색 — 서동균 | 🟡 |
+| `src/dfsa/modules/explorer/runner.py` | v0.2 `run_exploration` 진입점과 요청 단위 탐색 | 🟡 |
 | `tests/modules/explorer/` | Fetch, URL Policy, Parsing 회귀 테스트 — 서동균 | 🟡 |
 | `frontend/` | 예정: Web UI — 정유채, 기술·구현 상세 Owner 재량 | 🟡 |
 | `src/dfsa/modules/risk/`             | Module C 구현 위치 — 강영림 담당                         | 🟡       |
@@ -109,7 +110,7 @@ Contract가 변경되면 관련 `tests/contract/`와 `tests/fixtures/`도 함께
 | A/B/C | 기존 v0.1 구현으로 회귀를 검증한다. v0.2 callable 구현은 담당자별 후속 PR 범위다. |
 | Orchestrator | v0.2 A → Explorer → B → C 호출 제어 구현. Mock 검증 가능. |
 | Offline E2E | v0.1 실제 모듈 회귀 검증 유지. |
-| Explorer | 기존 문서 확보 구현과 v0.2 호출 경계가 준비됐다. 실제 탐색은 후속 PR 범위다. |
+| Explorer | 승인 범위 내 다중 페이지 탐색 구현. Production과 단계별 Live Runner가 접근 정책과 HTTPS Transport를 공유한다. |
 | Frontend / UI | 담당자가 신규 구현 및 기술 상세 수정 |
 | Evaluation | 별도 정량적 평가 제외; 기능·회귀·Live E2E 검증 유지 |
 
