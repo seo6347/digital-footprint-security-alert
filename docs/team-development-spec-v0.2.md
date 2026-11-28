@@ -184,7 +184,7 @@ ExposureSource: source_id: str, evidence: str(non-empty). 모든 참조는 B가 
 ### 7.2 Rule + LLM Hybrid
 
 - 기존 Rule-based 동일인 검증, 명시적 필드 추출 및 Evidence 검사와 LLM의 문맥 해석을 함께 사용한다. Rule-only 또는 LLM-only로 전체를 교체하지 않는다.
-- LLM은 이름 병기/문맥, 동일인 후보, 대상 인물 영역, 문맥 기반 Exposure 후보 및 명시적 관계 후보를 보조한다. 학교가 제공하는 별도 API를 사용하며 OpenAI/Gemini 호환이라고 가정하지 않는다.
+- LLM은 이름 병기/문맥, 동일인 후보, 대상 인물 영역, 문맥 기반 Exposure 후보 및 명시적 관계 후보를 보조한다. ST3는 학교 Mindlogic Gateway의 [OpenAI 호환 Chat Completions](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/chat-completions)와 JSON Schema를 사용한다. 모델별 호환성은 합성 파일럿에서 확인한다.
 - B Owner가 학교 API 문서, 인증, endpoint, 허용 모델, 데이터 전송 조건 및 응답 형식을 확인 후 SDK/HTTP client를 정한다. 설정은 환경변수 또는 로컬 설정으로 관리하고 키는 저장소/UI/로그에 노출하지 않는다. 실제 연동 정보 미확인은 P0 구현 전 확인 사항이다.
 - LLM 응답은 내부 typed candidate schema로 변환·검증하고 기존 문서의 실제 text/block 참조 및 원문 근거와 일치해야 한다. 출력 문자열이 문서 어딘가에 있다는 것만으로 귀속을 확정하지 않는다.
 - 확정 조건은 대상 이름 표현과 독립적인 소속/입력 이메일 등 충분한 근거 및 같은 인물 영역의 정보 귀속이다. 페이지 전체 조직명이나 도메인 단독으로 확정하지 않는다. 이름/소속이 같더라도 혼동 가능성이 있으면 uncertain. 사용자 확인이 필요한 경우 별도로 본인/동의 및 후보 귀속을 확인하고 재검증하며 확인 없는 uncertain은 공식 Exposure에 포함하지 않는다. UI 후보 확인 기능의 구현 상세는 UI/B 담당 합의; P0에서 미구현이라면 uncertain으로 안전하게 종료한다.
@@ -358,7 +358,7 @@ frontend/          # UI 담당자 소유 예정
 
 ## 14. Review 시 확인할 구현 선행 사항
 
-- 학교 제공 LLM API의 실제 사양/허용 모델/데이터 처리 조건/비용·호출 제한은 아직 확인되지 않았다. B 담당자가 확인 후 설정 및 내부 adapter를 결정한다.
+- ST3에서 학교 Gateway의 내부 Adapter를 제공한다. 학교 계정의 개별 모델 가용성과 실제 차감액은 합성 파일럿으로 확인한다. 실개인정보 처리 조건은 별도 확인이 필요하다.
 - Explorer의 초기 제한(깊이 3, 30페이지, 40 HTTP 요청 등) 및 LLM 초기 제한은 설계 제안값으로, 승인 범위 및 실제 소요 시간을 확인한 후 팀 Review에서 조정한다. 실제 대상 사이트 전체 크기/Live 성공을 보장하지 않는다.
 - UI 담당자가 추천 스택과 상세 UI/API 방식 수정 가능. 불확실한 동일인 후보 확인 UX 미구현 시 공식 결과에서 제외한다.
 - 기존 실행은 후속 기능 PR에서 단계적으로 v0.2로 전환한다. v0.1 명세와 회귀 검증은 전환 기간의 기준으로 보존한다.

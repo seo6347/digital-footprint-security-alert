@@ -14,7 +14,7 @@ v0.2 개발은 [중앙 개발 명세](docs/team-development-spec-v0.2.md)를 기
 | --- | --- |
 | Search | 이름·학교 기반 v0.2 SerpApi 검색 및 예비 관련성 판단 구현 |
 | Page Explorer | 승인 범위 내 다중 페이지 탐색, robots 확인, 원문·탐색 이력 보존 구현 |
-| Profiling | 문서 입력과 Exposure/Evidence Contract 구현. Rule + LLM 처리는 후속 |
+| Profiling | 문서 입력과 Exposure/Evidence Contract, 학교 LLM Adapter와 합성 파일럿 구현. Rule + LLM 연결은 후속 |
 | Analysis | Profile·Graph·교육 사례·대응 방안 Contract 구현. 생성 로직은 후속 |
 | Orchestrator | 검색·탐색·Profiling·Analysis 호출 제어, 실행 시간, DFSAResult 구현 |
 | Web UI | 합성 DFSAResult 제공. UI 및 API 연결은 후속 |
@@ -166,6 +166,60 @@ Explorer 상세 출력의 `document_summaries`에는 확보한 문서별 `source
 종료 코드는 정상 실행 또는 정상 0건 0, 실행·정책 오류나 부분 성공 1, 승인·설정 오류 또는 미연결 2입니다.
 
 실제 네트워크를 사용하지 않는 실행기 회귀 검증은 `python -m pytest tests/e2e/test_live_v02.py`로 실행합니다.
+
+## ST3 학교 LLM 합성 파일럿
+
+`dfsa.modules.profiling.llm_adapter.MindlogicSession`은 학교 Gateway의 내부 호출 경계입니다. 기본 모델은 `DFSA_LLM_MODEL`, 생성 토큰 한도는 `DFSA_LLM_MAX_COMPLETION_TOKENS`(기본 4096, 최대 16384)로 설정합니다. 동기 호출자는 `run_sync`에 세션 단위 비동기 작업을 전달하고, 비동기 호출자는 `async with`에서 같은 인터페이스를 사용합니다. 호출별 모델 지정도 가능합니다. ST4·ST5에서 실제 Profiling 연동을 진행합니다.
+
+합성 파일럿 v3은 기본 6개와 복합 2개 사례를 사용합니다. `bilingual-affiliation`은 한글·영문 이름과 여러 문서에 분산된 소속 근거를, `mixed-member-context`는 논문·활동·공용 연락처가 섞인 문서에서 대상자의 정보와 Evidence를 검증합니다. 초기 두 모델은 `gpt-5.4-nano`와 기준 모델 `gpt-5.5`입니다. 같은 `clear-match` 사례를 한 번씩 실행하고 각 호출을 정산한 뒤 `gpt-5.4-mini`, `claude-haiku-5-5`, `gemini-3.8-flash`, `claude-sonnet-5-5`를 확인합니다. 예산과 Schema 호환성이 확인된 모델만 나머지 사례로 확장합니다. 실행 옵션과 사례 목록은 `--help`로 확인합니다.
+
+다음 명령은 비용 없이 대상과 설정만 확인합니다.
+
+```powershell
+python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match
+```
+
+학교 Dashboard에서 잔액과 파일럿 시작 기준선을 확인한 뒤 유료 호출을 승인합니다. `--verified-call-cap`에는 학교가 확인한 해당 호출의 최대 차감액만 입력합니다. 강제 한도를 확인할 수 없는 경우 아래 `--manual-budget`으로 호출 하나씩 직접 승인할 수 있습니다. 수동 모드에서 실제 차감액은 남은 예산을 넘을 수 있습니다. `--settled-pilot-credits`는 이번 파일럿의 정산 완료 누적액이며 첫 호출에만 0을 사용합니다. 직전 호출의 차감액이 미확정이면 다음 호출을 보류합니다.
+
+```powershell
+$env:DFSA_LLM_API_KEY = [System.Net.NetworkCredential]::new(
+    '', (Read-Host 'School Gateway API key' -AsSecureString)
+).Password
+$pilotReport = Join-Path $env:TEMP 'dfsa-st3-nano-clear-match.json'
+try {
+    python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match `
+        --live --manual-budget --settled-pilot-credits 0 |
+        Set-Content -Encoding UTF8 -LiteralPath $pilotReport
+} finally {
+    Remove-Item Env:DFSA_LLM_API_KEY
+}
+```
+
+파일럿은 전 모델에 생성 토큰 4096과 동일한 Schema를 사용합니다. 보고서의 `score.areas`에는 Identity, Extraction, 정보 귀속, Evidence, Schema별 결과가 나오며, `usage`와 `elapsed_ms`에는 보고된 토큰과 실행 시간이 나옵니다. Timeout도 청구될 수 있습니다. 동일한 Dashboard 범위에서 호출 전후 차감액을 대조하고, 확인된 해당 호출의 실측값만 로컬 JSON의 `actual_credits`에 입력합니다. `credit_source`는 `dashboard` 또는 `gateway_usage`로 표시합니다. 다른 사용량과 분리할 수 없으면 두 값은 `null`로 유지합니다. [학교 사용량 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/usage) · [학교 잔액 API](https://docs.mindlogic.ai/docs/ssu/api-gateway/reference/credits)
+
+`python tests/e2e/live_llm_pilot.py --summarize <보고서1> <보고서2>`는 영역별 통과 건수, 토큰, 중앙 응답 시간과 실측 크레딧을 비교합니다. `case_groups.basic`과 `case_groups.complex`에서 각각 실행한 사례 수와 품질 기준 충족 여부를 확인합니다. 모델 선정은 **전체 8개 사례**에서 Identity 정답과 Schema 통과, 치명적 오류 0건, Evidence가 검증된 필수 Exposure 12건 중 11건 이상(90% 기준)을 요구합니다. Identity가 `confirmed`가 아닌 응답에 Exposure가 있으면 치명적 오류입니다.
+
+전체 품질 기준을 충족하고 정산을 완료한 모델 중 **실측 크레딧 합계가 가장 낮은 단일 모델**을 표시합니다. 크레딧이 같으면 중앙 응답 시간을 비교합니다. 각 모델·사례에 v3 보고서를 하나씩 사용합니다. API 키와 요청·응답 원문은 보고서에 포함되지 않습니다.
+
+### 합성 파일럿 상세 진단
+
+아래 명령은 네트워크 없이 시스템 지시, 합성 입력, JSON Schema와 기대 정답을 보여줍니다.
+
+```powershell
+python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match --details
+```
+
+API 키를 설정한 뒤 상세 진단 호출을 직접 승인하려면 Dashboard에서 정산한 **이번 파일럿의 누적 사용량**을 입력합니다. 한 번의 호출로 일반 점수와 검증된 구조화 응답을 함께 확인할 수 있습니다.
+
+```powershell
+$settled = Read-Host 'Dashboard에서 정산한 파일럿 누적 크레딧'
+python tests/e2e/live_llm_pilot.py --model gpt-5.4-nano --case clear-match `
+    --live --manual-budget --settled-pilot-credits "$settled" --details
+```
+
+`details`에는 기대 정답, 검증된 응답, 정확히 일치하지 않아 누락·추가로 집계된 Exposure, Identity·Evidence 참조의 필드별 차이가 표시됩니다. `possible_representation_difference`는 라벨, 끝 마침표, 대소문자, 공백 등의 차이를 진단합니다. 해당 항목의 `evidence_mismatches`가 비어 있다면 표기 차이와 올바른 근거가 함께 보고된 것입니다. `outside_expected_evidence`는 합성 사례의 기대 근거 범위를 벗어난 참조입니다.
+
+`clear-match`는 지시에서 값을 그대로 복사하도록 하지만, 정답은 `Role:` 같은 라벨과 끝 마침표를 뺀 값이며 Evidence는 전체 원문을 요구합니다. 현재 채점기는 값이 정확히 일치하지 않으면 원문 참조가 정확해도 Attribution과 Evidence를 실패로 집계할 수 있습니다. 상세 진단은 이 차이를 설명하며 v3 지시·입력·Schema·점수는 유지합니다. 이전 요약에는 응답이 없어 상세 진단을 소급할 수 없습니다. 상세 출력은 합성 파일럿에서만 제공하며 검증되지 않은 응답과 API 키는 출력하지 않습니다.
 
 ## 개발 문서
 
